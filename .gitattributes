@@ -1,0 +1,2 @@
+*.* linguist-language=shell
+*.php linguist-language=shell
