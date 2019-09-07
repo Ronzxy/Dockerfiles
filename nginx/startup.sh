@@ -39,21 +39,22 @@ export LD_LIBRARY_PATH=${NGINX_HOME}/lib:$LD_LIBRARY_PATH
 
 function func_help() {
         echo "
-使用方法:
-    ${BASE_NAME} [命令]
+Usage:
+    ${BASE_NAME} [Command]
 
-支持的命令:
-    start       启动并保持 Nginx 服务持续运行
-    reload      重新加载 Nginx 配置文件
-    reopen      重新打开日志文件
-    stop        立即关闭 Nginx 不等待所有连接关闭
-    quit        退出 Nginx 并等待所有连接关闭
-    help        展示 ${BASE_NAME} 脚本的帮助信息
+Commands:
+    start       - Start nginx service
+    daemon      - Start nginx service in background
+    reload      - Reload nginx configuration
+    reopen      - Reopen log files
+    stop        - Stop nginx immediate
+    quit        - Quit nginx until all connection close
+    help        - Show this information
 "
 }
 
 func_nginx_env() {
-    if [ -f .dockerenv ]; then
+    if [ -f ${NGINX_HOME}/.dockerenv ]; then
         if [ ! -f "${NGINX_HOME}/conf/nginx.conf" ]; then
             if [ ! -d "${NGINX_HOME}/conf" ]; then
                 mkdir -p ${NGINX_HOME}/conf
@@ -62,20 +63,20 @@ func_nginx_env() {
             cp -r ${NGINX_HOME}/conf.example/* ${NGINX_HOME}/conf
         fi
 
-        if [ ! -d "${NGINX_HOME}/html" ]; then
-            if [ ! -d "${NGINX_HOME}/html" ]; then
-                mkdir -p ${NGINX_HOME}/html
+        if [ ! -d "${HTML_DATA_PATH}" ]; then
+            if [ ! -d "${HTML_DATA_PATH}" ]; then
+                mkdir -p ${HTML_DATA_PATH}
             fi
 
-            cp -r ${NGINX_HOME}/html.example/* ${NGINX_HOME}/html
+            cp -r ${NGINX_HOME}/html.example/* ${HTML_DATA_PATH}
         else
             # index.html
-            if [ ! -f "${NGINX_HOME}/html/index.html" ]; then
-                cp -r ${NGINX_HOME}/html.example/index.html ${NGINX_HOME}/html
+            if [ ! -f "${HTML_DATA_PATH}/index.html" ]; then
+                cp -r ${NGINX_HOME}/html.example/index.html ${HTML_DATA_PATH}
             fi
             # 50x.html
-            if [ ! -f "${NGINX_HOME}/html/50x.html" ]; then
-                cp -r ${NGINX_HOME}/html.example/50x.html ${NGINX_HOME}/html
+            if [ ! -f "${HTML_DATA_PATH}/50x.html" ]; then
+                cp -r ${NGINX_HOME}/html.example/50x.html ${HTML_DATA_PATH}
             fi
         fi
     fi
@@ -88,25 +89,39 @@ func_nginx_env() {
     if [ ! -d /var/cache/nginx ]; then
         mkdir -p /var/cache/nginx
     fi
+
+    chmod 755 ${NGINX_HOME}/sbin/nginx
+}
+
+function func_server_pids() {
+    if [ -f ${NGINX_HOME}/.dockerenv ]; then
+        echo $(ps -ef | grep "nginx: master process" | grep -v grep | awk -F ' ' '{print $1}')
+    else
+        echo $(ps -ef | grep "nginx: master process" | grep -v grep | awk -F ' ' '{print $2}')
+    fi
 }
 
 function func_server_start() {
     func_nginx_env
 
-    if [ -f .dockerenv ]; then
-        PID=$(ps -ef | grep "${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf" | grep -v grep | awk -F ' ' '{print $1}')
-        if [ "${PID:-default}" == "default" ]; then
-            ${NGINX_HOME}/sbin/nginx -g "daemon off;" -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf
-        else
-            echo -e "Nginx has already started."
-        fi
+    PID=$(func_server_pids)
+
+    if [ "${PID:-default}" == "default" ]; then
+        ${NGINX_HOME}/sbin/nginx -g "daemon off;" -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf
     else
-        PID=$(ps -ef | grep "${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf" | grep -v grep | awk -F ' ' '{print $2}')
-        if [ "${PID:-default}" == "default" ]; then
-            ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf
-        else
-            echo -e "Nginx has already started."
-        fi
+        echo -e "Nginx has already started."
+    fi
+}
+
+function func_server_daemon() {
+    func_nginx_env
+
+    PID=$(func_server_pids)
+
+    if [ "${PID:-default}" == "default" ]; then
+        ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf
+    else
+        echo -e "Nginx has already started."
     fi
 }
 
@@ -129,6 +144,9 @@ function func_server_quit() {
 case "$1" in
     start)
         func_server_start
+    ;;
+    daemon)
+        func_server_daemon
     ;;
     reload)
         func_server_reload

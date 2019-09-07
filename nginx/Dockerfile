@@ -41,13 +41,17 @@ RUN set -ex && \
 # 安装依赖包
 RUN set -ex && \
     apk upgrade && \
-    apk add zlib pcre zlib libssl1.1 && \
+    apk add zlib pcre libssl1.1 && \
     rm -rf /var/cache/apk/*
+
+ENV HTML_DATA_PATH=/usr/nginx/html
 
 WORKDIR /usr/nginx
 
+ARG NGINX_VERSION=1.16.1
+
 # 复制数据
-COPY startup.sh dist/nginx-1.16.1/ ./
+COPY startup.sh dist/nginx-${NGINX_VERSION}/ ./
 
 RUN chmod 755 startup.sh && \
     mv conf conf.example && \

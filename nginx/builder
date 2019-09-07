@@ -52,9 +52,9 @@ check_source_file() {
             exit $?
         fi
     fi
-
-    apk add git
+    
     if [ ! -d "${WORK_HOME}/src/nginx-sticky-module-ng-${STICKY_VERSION}" ]; then
+        apk add git
         git clone https://bitbucket.org/nginx-goodies/nginx-sticky-module-ng/src/${STICKY_VERSION}/ ${WORK_HOME}/src/nginx-sticky-module-ng-${STICKY_VERSION}
     # else
     #     cd ${WORK_HOME}/src/nginx-sticky-module-ng-${STICKY_VERSION}
@@ -70,12 +70,12 @@ check_build_tools() {
 
 check_install_deps() {
     # 安装依赖
-    apk add pcre-dev zlib-dev openssl-dev openssl-dev linux-headers
+    apk add pcre-dev zlib-dev openssl-dev linux-headers
 }
 
-configure() {
+func_configure() {
     if [ -f "${WORK_HOME}/src/nginx-${NGINX_VERSION}/Makefile" ]; then
-        clean
+        func_clean
     fi
 
     check_source_file
@@ -129,9 +129,9 @@ configure() {
     echo "Finished."
 }
 
-build() {
+func_build() {
     if [ ! -f "${WORK_HOME}/src/nginx-${NGINX_VERSION}/Makefile" ]; then
-        configure
+        func_configure
     fi
 
     echo "Start building nginx..."
@@ -148,9 +148,9 @@ build() {
     echo "Finished."
 }
 
-install() {
+func_install() {
     if [ ! -x "${WORK_HOME}/src/nginx-${NGINX_VERSION}/objs/nginx" ]; then
-        build
+        func_build
     fi
 
     if [ -d ${INSTALL_PREFIX} ]; then
@@ -188,7 +188,7 @@ install() {
     echo "Finished."
 }
 
-clean() {
+func_clean() {
     if [ -f ${INSTALL_PREFIX}/cache/nginx.pid ]; then
         stop
     fi
@@ -255,9 +255,9 @@ function func_build_docker_images() {
    echo "Start building docker image..."
     # 修改 Dockerfile 中的 nginx 版本
     sed -i "s|FROM alpine:.*|FROM ${IMAGE_NAME}|g" ${WORK_HOME}/Dockerfile
-    sed -i "s|COPY startup.sh dist/nginx-.*|COPY startup.sh dist/nginx-${NGINX_VERSION}/ ./|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG NGINX_VERSION=.*|ARG NGINX_VERSION=${NGINX_VERSION}|g" ${WORK_HOME}/Dockerfile
     # 创建 nginx 镜像
-    docker build -t skygangsta/nginx:$NGINX_VERSION-alpine $WORK_HOME
+    docker build -t skygangsta/nginx:${NGINX_VERSION}-alpine $WORK_HOME
     
     echo "Finished."
 }
@@ -283,7 +283,7 @@ case "$1" in
         exit 0
     ;;
     build)
-        install
+        func_install
 
         exit 0
     ;;
@@ -293,7 +293,7 @@ case "$1" in
         exit 0
     ;;
     clean)
-        clean
+        func_clean
     ;;
     chown)
         func_chown $2 $3
