@@ -11,7 +11,19 @@ PGHOME=/usr/postgres
 PGUSER=postgres
 PGGROUP=postgres
 
-func_check_ld_conf() {
+func_env() {
+    for i in $PGHOME/bin/*; do
+        if [ -x $i ]; then
+            ln -sf $i /usr/bin/`basename $i`
+        fi
+    done
+    
+    for i in /usr/glibc-compat/bin/*; do
+        if [ -x $i ]; then
+            ln -sf $i /usr/bin/`basename $i`
+        fi
+    done
+
     ldconfig $PGHOME/lib
 }
 
@@ -28,19 +40,7 @@ func_init() {
 
     if [ -z ${POSTGRES_PASSWORD} ]; then
         POSTGRES_PASSWORD=`cat /dev/urandom | tr -dc A-Za-z0-9 | head -c 16`
-    fi
-    
-    for i in $PGHOME/bin/*; do
-        if [ -x $i ]; then
-            ln -sf $i /usr/bin/`basename $i`
-        fi
-    done
-    
-    for i in /usr/glibc-compat/bin/*; do
-        if [ -x $i ]; then
-            ln -sf $i /usr/bin/`basename $i`
-        fi
-    done
+    fi    
     
     if [ ! -d ${PGDATA} ]; then
         mkdir -p ${PGDATA}
@@ -154,7 +154,7 @@ func_backup() {
 }
 
 func_start() {
-    func_check_ld_conf
+    func_env
 
     # # 调整预读 -- 要配置数据所在磁盘参数
     # blockdev --setra 4096 /dev/vdb1
@@ -180,8 +180,9 @@ func_start() {
             func_init
         fi
     fi
+
     # 启动 PostgreSQL
-    if [ -f .dockerenv ]; then
+    if [ -f ${PGHOME}/.dockerenv ]; then
         su - ${PGUSER} -c "$PGHOME/bin/postgres -D ${PGDATA}"
     else
         su - ${PGUSER} -c "$PGHOME/bin/pg_ctl -D ${PGDATA} -w start"
@@ -199,7 +200,7 @@ func_start() {
 }
 
 func_stop() {
-    func_check_ld_conf
+    func_env
 
     if [ -f "${PGDATA}/postmaster.pid" ]; then
         if [ "$1" = "" ]; then
@@ -215,7 +216,7 @@ func_stop() {
 }
 
 func_reload() {
-    func_check_ld_conf
+    func_env
 
     if [ -f "${PGDATA}/postmaster.pid" ]; then
         su - ${PGUSER} -c "$PGHOME/bin/pg_ctl -D ${PGDATA} reload"
@@ -225,11 +226,11 @@ func_reload() {
 func_help() {
     echo "
 Usage:
-    start   Start postgres service
-    reload  Reload postgres
-    stop    Fast stop postgres service. And smart,immediate available
-    restart Restart postgres service.
-    help    Print help infomation
+    start       - Start postgres service
+    reload      - Reload postgres
+    stop        - Fast stop postgres service. And smart,immediate available
+    restart     - Restart postgres service.
+    help        - Print help infomation
 "
 }
 
@@ -238,8 +239,6 @@ if [ "$(id -u)" != "0" ]; then
     echo "Error: Please use the root user to execute this shell."
     exit 1
 fi
-
-set -e
 
 case "$1" in
     start)

@@ -1,36 +1,31 @@
 Nginx
 =====
 
-Auto build nginx and create nginx docker image in debian.
+Build postgres docker image from alpine edge.
 
 # Usage:
 ```shell
-git clone https://github.com/skygangsta/Dockerfile.git
-cd Dockerfile/nginx
+git clone https://github.com/skygangsta/Dockerfiles.git
+cd Dockerfile/postgres
 chmod 755 builder
-./builder
+./builder image
 ```
 
 # 创建容器
 ```shell
-docker run --name postgres \
+
+mkdir -p /home/storage/run/docker/postgres/data
+
+CONTAINER_ENGINE=docker
+${CONTAINER_ENGINE} run --name postgres \
     -h postgres.erayun.cn \
     -p 5432:5432 \
-    -v /home/storage/run/docker/postgres/data:/var/lib/postgres \
-    --cpu-shares=1024 --memory=30G --memory-swap=0 \
+    -v /home/storage/run/docker/postgres/data:/var/lib/postgres:rw,z \
+    -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
+    --cpu-shares=1024 --memory=16G --memory-swap=0 \
     --restart=always \
     --oom-kill-disable \
     --privileged \
     -it -d skygangsta/postgres:11.5-alpine
 
-
-mkdir -p /home/storage/run/docker/postgres/data
-podman run --name postgres \
-    -h postgres \
-    -p 5432:5432 \
-    -v /home/storage/run/docker/postgres/data:/var/lib/postgres \
-    --cpu-shares=1024 --memory=16G --memory-swap=0 \
-    --oom-kill-disable \
-    --privileged \
-    -it -d skygangsta/postgres:11.5-alpine
 ```

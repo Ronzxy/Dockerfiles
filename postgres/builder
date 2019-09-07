@@ -237,7 +237,7 @@ func_clean() {
     echo "Finished."
 }
 
-docker_env() {
+func_docker_env() {
     echo "Start initializing docker env..."
 
     docker ps -a | grep build_postgres_on_${IMAGE_NAME/:/_} > /dev/null 2>&1
@@ -248,17 +248,17 @@ docker_env() {
             --volume=${WORK_HOME}:/data \
             --cpu-shares=1024 --memory=512m --memory-swap=-1 \
             --oom-kill-disable=true \
-            -t -i -d ${IMAGE_NAME} || exit 1
+            -t -i -d ${IMAGE_NAME} || exit $?
     else
         docker ps | grep build_postgres_on_${IMAGE_NAME/:/_} > /dev/null 2>&1
         if [ $? -ne 0 ]; then
-            docker start build_postgres_on_${IMAGE_NAME/:/_} || exit 1
+            docker start build_postgres_on_${IMAGE_NAME/:/_} || exit $?
         fi
     fi
 
-    docker exec -it build_postgres_on_${IMAGE_NAME/:/_} apk add bash
-    docker exec -it build_postgres_on_${IMAGE_NAME/:/_} /data/builder sources ${IMAGE_NAME}
-    docker exec -it build_postgres_on_${IMAGE_NAME/:/_} apk upgrade
+    docker exec -it build_postgres_on_${IMAGE_NAME/:/_} apk add bash || exit $?
+    docker exec -it build_postgres_on_${IMAGE_NAME/:/_} /data/builder sources ${IMAGE_NAME} || exit $?
+    docker exec -it build_postgres_on_${IMAGE_NAME/:/_} apk upgrade || exit $?
 
     echo "Finished."
 }
@@ -300,7 +300,7 @@ function func_chown() {
 case "$1" in
     image)
         # 创建 redis docker 构建容器
-        docker_env
+        func_docker_env
 
         if [ "${2:-default}" != "nb" ]; then
             docker exec -it build_postgres_on_${IMAGE_NAME/:/_} /data/builder build || exit 1
