@@ -1,9 +1,8 @@
-Nginx
-=====
+# Nginx
 
 Build and create an nginx docker image from the alpine edge.
 
-# Build:
+# Build
 ```shell
 git clone https://github.com/skygangsta/Dockerfiles.git
 cd Dockerfiles/nginx
@@ -11,8 +10,8 @@ chmod 755 builder
 ./builder image
 ```
 
-# Docker
-```shell
+# Usage
+```sh
 
 mkdir -p /home/storage/run/docker/nginx/{conf,html,cert,logs}
 

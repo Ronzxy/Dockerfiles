@@ -1,5 +1,6 @@
 FROM alpine:edge
 
+ARG NGINX_VERSION=1.16.1
 ARG ZONE_NAME="Asia/Shanghai"
 ARG USER=www
 ARG GROUP=www
@@ -47,8 +48,6 @@ RUN set -ex && \
 ENV HTML_DATA_PATH=/usr/nginx/html
 
 WORKDIR /usr/nginx
-
-ARG NGINX_VERSION=1.16.1
 
 # 复制数据
 COPY startup.sh dist/nginx-${NGINX_VERSION}/ ./

@@ -7,11 +7,11 @@
 WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 BASE_NAME=$(basename $BASH_SOURCE)
 
-PG_VERSION=11.5
-PG_VERSION_MAJOR=`printf $PG_VERSION | awk -F '.' '{print $1}'`
-PG_VERSION_MINOR=`printf $PG_VERSION | awk -F '.' '{print $2}'`
+POSTGRES_VERSION=11.5
+POSTGRES_VERSION_MAJOR=`printf $POSTGRES_VERSION | awk -F '.' '{print $1}'`
+POSTGRES_VERSION_MINOR=`printf $POSTGRES_VERSION | awk -F '.' '{print $2}'`
 BUILD_PREFIX=/usr
-INSTALL_PREFIX=${WORK_HOME}/dist/postgres-${PG_VERSION}
+INSTALL_PREFIX=${WORK_HOME}/dist/postgres-${POSTGRES_VERSION}
 CITUS_VERSION=8.3.2
 POSTGIS_VERSION=2.5.3
 IMAGE_NAME=alpine:edge
@@ -33,12 +33,12 @@ func_check_source_file() {
         mkdir -p "${WORK_HOME}/src"
     fi
 
-    if [ ! -s ${WORK_HOME}/src/postgresql-${PG_VERSION}.tar.bz2 ]; then
-        wget https://ftp.postgresql.org/pub/source/v${PG_VERSION}/postgresql-${PG_VERSION}.tar.bz2 \
-            -O ${WORK_HOME}/src/postgresql-${PG_VERSION}.tar.bz2
+    if [ ! -s ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}.tar.bz2 ]; then
+        wget https://ftp.postgresql.org/pub/source/v${POSTGRES_VERSION}/postgresql-${POSTGRES_VERSION}.tar.bz2 \
+            -O ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}.tar.bz2
         
         if [ $? -ne 0 ]; then
-            rm -rf ${WORK_HOME}/src/postgresql-${PG_VERSION}.tar.gz
+            rm -rf ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}.tar.gz
             exit $?
         fi
     fi
@@ -94,7 +94,7 @@ func_check_install_deps() {
 }
 
 func_configure() {
-    if [ -f "${WORK_HOME}/src/postgresql-${PG_VERSION}/src/backend/postgres" ]; then
+    if [ -f "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}/src/backend/postgres" ]; then
         func_clean
     fi
 
@@ -104,8 +104,8 @@ func_configure() {
 
     echo "Start configuring postgresql..."
 
-    tar xf ${WORK_HOME}/src/postgresql-${PG_VERSION}.tar.bz2 -C ${WORK_HOME}/src && \
-        cd ${WORK_HOME}/src/postgresql-${PG_VERSION}
+    tar xf ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}.tar.bz2 -C ${WORK_HOME}/src && \
+        cd ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}
 
     ./configure --prefix=${INSTALL_PREFIX} \
         --enable-integer-datetimes \
@@ -142,13 +142,13 @@ func_configure() {
 }
 
 func_build() {
-    if [ ! -f "${WORK_HOME}/src/postgresql-${PG_VERSION}/src/backend/postgres" ]; then
+    if [ ! -f "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}/src/backend/postgres" ]; then
         func_configure
     fi
 
     echo "Start building postgresql..."
 
-    cd ${WORK_HOME}/src/postgresql-${PG_VERSION}
+    cd ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}
 
     make $j || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
 
@@ -163,7 +163,7 @@ func_build() {
 }
 
 func_install() {
-    if [ ! -x "${WORK_HOME}/src/postgresql-${PG_VERSION}/src/backend/postgres" ]; then
+    if [ ! -x "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}/src/backend/postgres" ]; then
         func_build
     fi
 
@@ -173,7 +173,7 @@ func_install() {
 
     echo "Start installing postgresql..."
 
-    cd ${WORK_HOME}/src/postgresql-${PG_VERSION}
+    cd ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}
 
     make install || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
 
@@ -183,12 +183,12 @@ func_install() {
 func_install_contrib() {
     # 编译外围模块
     echo "Start compiling contrib..."
-    cd ${WORK_HOME}/src/postgresql-${PG_VERSION}/contrib
+    cd ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}/contrib
     make $j
     make install
     # 编译隔离测试脚本
     echo "Start compiling test isolation..."
-    cd ${WORK_HOME}/src/postgresql-${PG_VERSION}/src/test/isolation
+    cd ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}/src/test/isolation
     make $j
     make install
 }
@@ -222,8 +222,8 @@ func_install_postgis() {
 func_clean() {
     echo "Start cleaning postgresql..."
 
-    if [ -d "${WORK_HOME}/src/postgresql-${PG_VERSION}" ]; then
-        rm -rf "${WORK_HOME}/src/postgresql-${PG_VERSION}"
+    if [ -d "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}" ]; then
+        rm -rf "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}"
     fi
 
     if [ -d "${WORK_HOME}/src/citus-${CITUS_VERSION}" ]; then
@@ -286,9 +286,9 @@ function func_build_docker_images() {
     echo "Start building docker image..."
     # 修改 Dockerfile 中的 postgresql 版本
     sed -i "s|FROM alpine:.*|FROM ${IMAGE_NAME}|g" ${WORK_HOME}/Dockerfile
-    sed -i "s|COPY startup.sh dist/postgres-.*|COPY startup.sh dist/postgres-${PG_VERSION}/ ./|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG POSTGRES_VERSION=.*|ARG POSTGRES_VERSION=${POSTGRES_VERSION}|g" ${WORK_HOME}/Dockerfile
     # 创建 postgresql 镜像
-    docker build -t skygangsta/postgres:${PG_VERSION}-alpine $WORK_HOME
+    docker build -t skygangsta/postgres:${POSTGRES_VERSION}-alpine $WORK_HOME
     
     echo "Finished."
 }

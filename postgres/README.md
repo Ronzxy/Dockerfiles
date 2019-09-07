@@ -1,9 +1,8 @@
-Nginx
-=====
+# PostgreSQL
 
 Build postgres docker image from alpine edge.
 
-# Usage:
+### Build
 ```shell
 git clone https://github.com/skygangsta/Dockerfiles.git
 cd Dockerfile/postgres
@@ -11,8 +10,9 @@ chmod 755 builder
 ./builder image
 ```
 
-# 创建容器
-```shell
+### Usage
+
+```sh
 
 mkdir -p /home/storage/run/docker/postgres/data
 

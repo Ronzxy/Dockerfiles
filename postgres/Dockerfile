@@ -1,5 +1,6 @@
 FROM alpine:edge
 
+ARG POSTGRES_VERSION=11.5
 ARG ZONE_NAME="Asia/Shanghai"
 ARG USER=postgres
 ARG GROUP=postgres
@@ -71,7 +72,7 @@ ENV SYNC_NAME=""
 WORKDIR /usr/postgres
 
 # 复制数据
-COPY startup.sh dist/postgres-11.5/ ./
+COPY startup.sh dist/postgres-${POSTGRES_VERSION}/ ./
 
 RUN chmod 755 startup.sh && \
     > .dockerenv

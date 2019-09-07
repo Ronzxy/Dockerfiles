@@ -1,3 +1,3 @@
 # Skygangsta's Dockerfiles
 
-This is a collection of developments.
+This is a collection of developments I rely on for various things.
