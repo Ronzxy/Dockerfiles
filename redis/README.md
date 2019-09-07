@@ -1,6 +1,6 @@
 # Redis
 
-Build and create an nginx docker image from the alpine edge.
+Build and create redis docker image from the alpine edge.
 
 ### Build
 ```shell

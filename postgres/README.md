@@ -1,11 +1,11 @@
 # PostgreSQL
 
-Build postgres docker image from alpine edge.
+Build and create postgres docker image from the alpine edge.
 
 ### Build
 ```shell
 git clone https://github.com/skygangsta/Dockerfiles.git
-cd Dockerfile/postgres
+cd Dockerfiles/postgres
 chmod 755 builder
 ./builder image
 ```
