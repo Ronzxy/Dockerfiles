@@ -1,0 +1,383 @@
+#!/bin/bash
+#
+# 作者：Skygangsta<skygangsta@hotmail.com>
+#
+# Nginx 编译脚本，仅支持 Debian 系 Linux 系统
+
+WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+BASE_NAME=$(basename $BASH_SOURCE)
+
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+export PATH
+
+WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+PHP_VERSION=7.3.9
+PHP_VERSION_MAJOR=`printf ${PHP_VERSION} | awk -F '.' '{print $1}'`
+PHP_VERSION_MINOR=`printf ${PHP_VERSION} | awk -F '.' '{print $2}'`
+INSTALL_PREFIX=${WORK_HOME}/dist/php-${PHP_VERSION}
+
+PECL_REDIS=4.2.0
+PECL_SMBCLIENT=1.0.0
+PECL_IMAGICK=3.4.3
+
+NGINX_VERSION=1.16.1
+IMAGE_NAME=skygangsta/nginx:${NGINX_VERSION}-alpine
+
+CONTAINER_NAME=${IMAGE_NAME#*/}
+CONTAINER_NAME=build_php_on_${CONTAINER_NAME/:/_}
+
+# 探测cpu核心数
+if [ -f /proc/cpuinfo ]; then
+    j="-j$(grep 'model name' /proc/cpuinfo | wc -l || 1)"
+fi
+
+check_source_file() {
+    
+    # # 检查并安装 wget
+    # if ! which wget 2>1 > /dev/null; then
+    #     apk add wget ca-certificates
+    # fi
+
+    if [ ! -d "${WORK_HOME}/src" ]; then
+        mkdir -p "${WORK_HOME}/src"
+    fi
+
+    if [ ! -s "${WORK_HOME}/src/php-${PHP_VERSION}.tar.xz" ]; then
+
+         wget http://cn2.php.net/distributions/php-${PHP_VERSION}.tar.xz \
+            -O ${WORK_HOME}/src/php-${PHP_VERSION}.tar.xz
+        if [ $? -ne 0 ]; then
+            rm -rf ${WORK_HOME}/src/php-${PHP_VERSION}.tar.xz
+            exit $?
+        fi
+    fi
+
+}
+
+check_build_tools() {
+    # 安装编译工具
+    apk add gcc g++ make autoconf patch
+}
+
+check_install_deps() {
+    # 安装依赖
+    apk add zlib-dev libjpeg-turbo-dev libpng-dev libxml2-dev libmcrypt-dev libxpm-dev libwebp-dev libxslt-dev libzip-dev \
+        gmp-dev gettext-dev openssl-dev readline-dev icu-dev bzip2-dev curl-dev freetype-dev \
+        imap-dev krb5-dev openldap-dev mariadb-dev unixodbc-dev postgresql-dev net-snmp-dev \
+        tidyhtml-dev sqlite-dev
+}
+
+func_configure() {
+    if [ -f "${WORK_HOME}/src/php-${PHP_VERSION}/Makefile" ]; then
+        func_clean
+    fi
+
+    check_build_tools
+    check_source_file
+    check_install_deps
+
+    echo "Start configuring php..."
+
+    # diff -upr php-7.3.9.backup/ php-7.3.9/ > /data/php-7.3.91.patch
+    # patch -p0 < /data/php-7.3.9.patch
+
+    tar xf ${WORK_HOME}/src/php-${PHP_VERSION}.tar.xz -C ${WORK_HOME}/src
+    cd ${WORK_HOME}/src/php-${PHP_VERSION}
+
+    ./configure \
+    --prefix=${INSTALL_PREFIX} \
+    --exec-prefix=${INSTALL_PREFIX} \
+    --sysconfdir=/etc/php \
+    --datadir=${INSTALL_PREFIX}/share \
+    --includedir=${INSTALL_PREFIX}/include \
+    --libdir=${INSTALL_PREFIX}/lib \
+    --libexecdir=${INSTALL_PREFIX}/libexec \
+    --localstatedir=/var \
+    --sharedstatedir=/var/lib \
+    --mandir=${INSTALL_PREFIX}/share/man \
+    --infodir=${INSTALL_PREFIX}/share/info \
+    --cache-file=config.cache \
+    --with-config-file-path=/etc/php \
+    --with-config-file-scan-dir=/etc/php/conf.d \
+    --disable-debug \
+    \
+    --with-libxml-dir=/usr \
+    --with-jpeg-dir=/usr \
+    --with-freetype-dir=/usr \
+    --with-png-dir=/usr \
+    --with-xpm-dir=/usr \
+    --with-icu-dir=/usr \
+    \
+    --disable-rpath \
+    --with-layout=GNU \
+    --with-readline=shared \
+    --with-pear=shared \
+    \
+    --with-pcre-regex \
+    --with-iconv=shared \
+    --with-pic=shared \
+    --with-imap=shared \
+    --with-imap-ssl=shared \
+    --with-kerberos \
+    --with-bz2=shared \
+    --with-gettext=shared \
+    --with-gmp=shared \
+    --with-openssl=shared \
+    --with-mhash=shared \
+    --with-zlib=shared \
+    --with-gd=shared \
+    --with-snmp=shared \
+    --with-xmlrpc=shared \
+    --with-ldap=shared \
+    --with-ldap-sasl \
+    --with-xsl=shared \
+    --with-curl=shared \
+    --with-tidy=shared \
+    --with-webp-dir=shared,/usr \
+    --with-unixODBC=shared,/usr \
+    --enable-exif=shared \
+    --enable-ftp=shared \
+    --enable-sockets=shared \
+    --enable-sysvsem=shared \
+    --enable-sysvshm=shared \
+    --enable-sysvmsg=shared \
+    --enable-shmop=shared \
+    --enable-calendar=shared \
+    --enable-xml=shared \
+    --enable-pcntl=shared \
+    --enable-mbstring=shared \
+    --enable-mbregex=shared \
+    --enable-bcmath=shared \
+    --enable-dom=shared \
+    --enable-wddx=shared \
+    --enable-soap=shared \
+    --enable-xmlreader=shared \
+    --enable-xmlwriter=shared \
+    --enable-json=shared \
+    --enable-zip=shared \
+    --enable-phar=shared \
+    --enable-sysvmsg=shared \
+    --enable-sysvshm=shared \
+    --enable-sysvsem=shared \
+    --enable-posix=shared \
+    --enable-fileinfo=shared \
+    --enable-intl=shared \
+    --enable-session=shared \
+    --enable-simplexml=shared \
+    --enable-ctype=shared \
+    \
+    --enable-fpm \
+    --with-fpm-user=www \
+    --with-fpm-group=www \
+    \
+    --enable-mysqlnd=shared,/usr/bin/mariadb_config \
+    --with-mysqli=shared,mysqlnd \
+    --with-sqlite3=shared \
+    --with-pgsql=shared \
+    \
+    --enable-pdo=shared \
+        --with-pdo-odbc=shared,unixODBC,/usr \
+        --with-pdo-sqlite=shared \
+        --with-pdo-mysql=shared,/usr/bin/mariadb_config \
+        --with-pdo-pgsql=shared
+
+    if [ -f ${WORK_HOME}/src/php-${PHP_VERSION}/Makefile ]; then
+        sed -i "s|EXTENSION_DIR = .*|EXTENSION_DIR = ${INSTALL_PREFIX}/lib/modules|g" \
+            ${WORK_HOME}/src/php-${PHP_VERSION}/Makefile
+    else
+        echo "Configure with error."
+        exit 1
+    fi
+
+    echo "Finished."
+}
+
+func_build() {
+    if [ ! -f "${WORK_HOME}/src/php-${PHP_VERSION}/Makefile" ]; then
+        func_configure
+    fi
+
+    echo "Start building php..."
+
+    cd ${WORK_HOME}/src/php-${PHP_VERSION}
+
+    make $j LDFLAGS=-lreadline || bash -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
+
+    if [ $? -ne 0 ]; then
+        echo -e "\033[31m[ERROR] Compile encountered with an error.\033[0m"
+        exit 1
+    fi
+
+    echo "Finished."
+}
+
+func_install() {
+    func_build
+
+    echo "Start installing php..."
+
+    if [ -d ${INSTALL_PREFIX} ]; then
+        rm -rf ${INSTALL_PREFIX}
+    fi
+
+    cd ${WORK_HOME}/src/php-${PHP_VERSION}
+
+    make install
+
+    if [ $? -ne 0 ]; then
+        echo -e "\033[31m[ERROR] Installation encountered with an error.\033[0m"
+        exit 1
+    fi
+
+    sed -i "s|;extension_dir = \"./\"|extension_dir = \"/usr/lib/php/modules\"|g" php.ini-development
+    sed -i "s|;extension_dir = \"./\"|extension_dir = \"/usr/lib/php/modules\"|g" php.ini-production
+
+    cp php.ini-development php.ini-production /etc/php
+    cp /etc/php/php.ini-production /etc/php/php.ini
+    cp /etc/php/php-fpm.conf.default /etc/php/php-fpm.conf
+    cp /etc/php/php-fpm.d/www.conf.default /etc/php/php-fpm.d/www.conf
+
+    if [ -d ${INSTALL_PREFIX}/conf ]; then
+        rm -rf ${INSTALL_PREFIX}/conf
+    fi
+
+    cp -r /etc/php ${INSTALL_PREFIX}/conf
+    mkdir ${INSTALL_PREFIX}/conf/conf.d
+
+    echo "Finished."
+}
+
+func_clean() {
+    if [ -f ${WORK_HOME}/dist/nginx/cache/nginx.pid ]; then
+        stop
+    fi    
+    
+    echo "Start cleaning php..."
+
+    if [ -d "${WORK_HOME}/src/php-${PHP_VERSION}" ]; then
+       rm -rf "${WORK_HOME}/src/php-${PHP_VERSION}"
+    fi
+
+    echo "Finished."
+}
+
+check_nginx_docker_image() {
+    echo "Checking nginx docker image..."
+    docker images | grep skygangsta/nginx | grep ${NGINX_VERSION} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "nginx:${NGINX_VERSION} docker image not found, create it..."
+        # 依赖镜像未创建
+        if [ ! -f ${WORK_HOME}/../nginx/builder ]; then
+            echo "nginx builder not found"
+            exit 1
+        fi
+        sed -i "s/NGINX_VERSION=.*/NGINX_VERSION=${NGINX_VERSION}/g" ${WORK_HOME}/../nginx/builder
+        chmod 755 ${WORK_HOME}/../nginx/builder
+        bash ${WORK_HOME}/../nginx/builder image
+    else
+        echo "Found ${IMAGE_NAME}"
+    fi
+    # 切换镜像版本
+    sed -i "s|^FROM skygangsta/nginx:.*$|FROM ${IMAGE_NAME}|g" ${WORK_HOME}/Dockerfile
+}
+
+docker_env() {
+    echo "Start initializing docker env..."
+
+    check_nginx_docker_image
+
+    docker ps -a | grep ${CONTAINER_NAME} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        # 容器未创建
+        # 创建容器
+        docker run --name ${CONTAINER_NAME} \
+            --volume=${WORK_HOME}:/data \
+            --cpu-shares=1024 --memory=512m --memory-swap=0 \
+            --oom-kill-disable \
+            -it -d ${IMAGE_NAME} || exit 1
+    else
+        docker ps | grep ${CONTAINER_NAME} > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            docker start ${CONTAINER_NAME} || exit 1
+        fi
+    fi
+
+    docker exec -it ${CONTAINER_NAME} apk add bash
+    docker exec -it ${CONTAINER_NAME} /data/builder sources ${IMAGE_NAME}
+    docker exec -it ${CONTAINER_NAME} apk upgrade
+
+    echo "Finished."
+}
+
+add_apk_source() {
+    if [ ! -f .add_apk_source ]; then
+        echo http://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories
+        echo "apk" > .add_apk_source
+    fi
+}
+
+function func_help() {
+    echo "
+Usage:
+    ${BASE_NAME} [Command]
+
+Commands:
+    image       - Build a docker image
+    build       - Compile source code
+    help        - Show this information
+"
+}
+
+function func_build_docker_images() {
+    echo "Start building docker image..."
+    # 修改 Dockerfile 中的 nginx 版本
+    sed -i "s|ARG PHP_VERSION=.*|ARG PHP_VERSION=${PHP_VERSION}|g" ${WORK_HOME}/Dockerfile 
+    docker build -t skygangsta/php:${PHP_VERSION}-alpine $WORK_HOME
+    
+    echo "Finished."
+}
+
+function func_chown() {
+    chown -R $1:$2 ${WORK_HOME}
+}
+
+case "$1" in
+    image)
+        # 创建 redis docker 构建容器
+        docker_env
+
+        if [ "${2:-default}" != "nb" ]; then
+            docker exec -it ${CONTAINER_NAME} /data/builder build || exit 1
+        fi
+
+        docker exec -it ${CONTAINER_NAME} /data/builder clean || exit 1
+        docker exec -it ${CONTAINER_NAME} /data/builder chown $(id -u) $(id -g) || exit 1
+        
+        func_build_docker_images
+
+        exit 0
+    ;;
+    build)
+        func_install
+
+        exit 0
+    ;;
+    sources)
+        add_apk_source $@
+
+        exit 0
+    ;;
+    clean)
+        func_clean
+    ;;
+    chown)
+        func_chown $2 $3
+    ;;
+    help)
+        func_help
+    ;;
+    *)
+        func_help
+        exit 1
+    ;;
+esac
