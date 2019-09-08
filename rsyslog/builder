@@ -1,0 +1,48 @@
+#!/bin/bash
+#
+# 作者：Skygangsta<skygangsta@hotmail.com>
+#
+# Postgres 编译脚本，仅支持 Debian 系 Linux 系统
+
+WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+BASE_NAME=$(basename $BASH_SOURCE)
+
+IMAGE_NAME=alpine:edge
+
+export PATH=${INSTALL_PREFIX}/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+
+function func_help() {
+    echo "
+Usage:
+    ${BASE_NAME} [Command]
+
+Commands:
+    image       - Build a docker image
+    build       - Compile source code
+    help        - Show this information
+"
+}
+
+function func_build_docker_images() {
+    echo "Start building rsyslog image..."
+    sed -i "s|FROM alpine:.*|FROM ${IMAGE_NAME}|g" ${WORK_HOME}/Dockerfile
+    # 创建 postgresql 镜像
+    docker build -t skygangsta/rsyslog:${IMAGE_NAME/:/-} $WORK_HOME
+    
+    echo "Finished."
+}
+
+case "$1" in
+    image)
+        func_build_docker_images
+
+        exit 0
+    ;;
+    help)
+        func_help
+    ;;
+    *)
+        func_help
+        exit 1
+    ;;
+esac
