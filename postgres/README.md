@@ -25,7 +25,6 @@ ${CONTAINER_ENGINE} run --name postgres \
     --cpu-shares=1024 --memory=16G --memory-swap=0 \
     --restart=always \
     --oom-kill-disable \
-    --privileged \
     -it -d skygangsta/postgres:11.5-alpine
 
 ```
