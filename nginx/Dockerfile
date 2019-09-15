@@ -25,20 +25,6 @@ RUN set -ex && \
     apk del shadow && \
     rm -rf /var/cache/apk/*
 
-# # 配置系统语言环境
-# RUN set -ex && \
-#     GLIBC_VERSION=2.30-r0 && \
-#     wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
-#     wget -q https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}.apk && \
-#     wget -q https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}.apk && \
-#     wget -q https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-i18n-${GLIBC_VERSION}.apk && \
-#     apk add glibc-bin-${GLIBC_VERSION}.apk glibc-i18n-${GLIBC_VERSION}.apk glibc-${GLIBC_VERSION}.apk && \
-#     rm -rf glibc-bin-${GLIBC_VERSION}.apk glibc-i18n-${GLIBC_VERSION}.apk glibc-${GLIBC_VERSION}.apk && \
-#     rm -rf /var/cache/apk/*
-# RUN printf "zh_CN\nzh_HK\nzh_TW" | xargs -i /usr/glibc-compat/bin/localedef -c -f UTF-8 -i {} {}.UTF-8
-# ENV LC_ALL=zh_CN.UTF-8
-# ENV LANG=zh_CN.UTF-8
-
 # 安装依赖包
 RUN set -ex && \
     apk upgrade && \

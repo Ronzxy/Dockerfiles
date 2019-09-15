@@ -1,6 +1,6 @@
 # Nginx
 
-Build and create an nginx docker image from the alpine edge.
+Build and create nginx docker image from the alpine edge.
 
 # Build
 ```shell
