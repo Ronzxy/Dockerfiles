@@ -14,8 +14,12 @@ NGINX_VERSION=1.16.1
 NGINX_VERSION_MAJOR=`printf $NGINX_VERSION | awk -F '.' '{print $1}'`
 NGINX_VERSION_MINOR=`printf $NGINX_VERSION | awk -F '.' '{print $2}'`
 BUILD_PREFIX=/usr
-INSTALL_PREFIX=${WORK_HOME}/dist/nginx-${NGINX_VERSION}
+NGINX_INSTALL_PATH=${WORK_HOME}/dist/nginx-${NGINX_VERSION}
 STICKY_VERSION=1.2.6
+ENABLE_MODSEC=`echo TRUE | tr 'A-Z' 'a-z'`
+MODSEC_VERSION=3.0.3
+MODSEC_INSTALL_PATH=${WORK_HOME}/dist/modsecurity
+OWASP_MODSEC_CRS_VERSION=3.2.0
 IMAGE_NAME=alpine:edge
 
 # 探测cpu核心数
@@ -25,10 +29,10 @@ fi
 
 check_source_file() {
     
-    # # 检查并安装 wget
-    # if ! which wget 2>1 > /dev/null; then
-    #     apk add wget ca-certificates
-    # fi
+    # 检查并安装 git
+    if ! which git 2>1 > /dev/null; then
+        apk add git
+    fi
 
     if [ ! -d "${WORK_HOME}/src" ]; then
         mkdir -p "${WORK_HOME}/src"
@@ -36,41 +40,111 @@ check_source_file() {
 
     if [ ! -s "${WORK_HOME}/src/nginx-${NGINX_VERSION}.tar.gz" ]; then
 
-        wget -c http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
-            -O ${WORK_HOME}/src/nginx-${NGINX_VERSION}.tar.gz
-        if [ $? -ne 0 ]; then
-            rm -rf ${WORK_HOME}/src/nginx-${NGINX_VERSION}.tar.gz
+        wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
+            -O ${WORK_HOME}/src/nginx-${NGINX_VERSION}.tar.gz.tmp
+        if [ $? -eq 0 ]; then
+            mv ${WORK_HOME}/src/nginx-${NGINX_VERSION}.tar.gz.tmp ${WORK_HOME}/src/nginx-${NGINX_VERSION}.tar.gz
+        else
+            rm -rf ${WORK_HOME}/src/nginx-${NGINX_VERSION}.tar.gz.tmp
             exit $?
         fi
     fi
 
-    if [ ! -s "${WORK_HOME}/src/nginx-upstream-fair-master.tar.gz" ]; then
-        wget https://github.com/gnosek/nginx-upstream-fair/archive/master.tar.gz -O ${WORK_HOME}/src/nginx-upstream-fair-master.tar.gz
+    if [ ${ENABLE_MODSEC:-false} = true ]; then
 
-        if [ $? -ne 0 ]; then
-            rm -rf ${WORK_HOME}/src/nginx-upstream-fair-master.tar.gz
+        if [ ! -d "${WORK_HOME}/src/ModSecurity" ]; then
+
+            git clone --depth 1 -b v3/master --single-branch https://github.com/SpiderLabs/ModSecurity \
+                ${WORK_HOME}/src/ModSecurity
+        else
+            cd ${WORK_HOME}/src/ModSecurity
+            git pull
+        fi
+
+        
+        if [ ! -d "${WORK_HOME}/src/ModSecurity-nginx" ]; then
+
+            git clone --depth 1 https://github.com/SpiderLabs/ModSecurity-nginx.git \
+                ${WORK_HOME}/src/ModSecurity-nginx
+        else
+            cd ${WORK_HOME}/src/ModSecurity
+            git pull
+        fi
+  
+        if [ ! -s "${WORK_HOME}/src/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION}.tar.gz" ]; then
+
+            wget https://github.com/SpiderLabs/owasp-modsecurity-crs/archive/v${OWASP_MODSEC_CRS_VERSION}.tar.gz \
+                -O ${WORK_HOME}/src/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION}.tar.gz.tmp
+            if [ $? -eq 0 ]; then
+                mv ${WORK_HOME}/src/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION}.tar.gz.tmp ${WORK_HOME}/src/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION}.tar.gz
+            else
+                rm -rf ${WORK_HOME}/src/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION}.tar.gz.tmp
+                exit $?
+            fi
+        fi
+    fi
+
+    if [ ! -s "${WORK_HOME}/src/nginx-upstream-fair-master.tar.gz" ]; then
+    
+        wget https://github.com/gnosek/nginx-upstream-fair/archive/master.tar.gz \
+            -O ${WORK_HOME}/src/nginx-upstream-fair-master.tar.gz.tmp
+
+        if [ $? -eq 0 ]; then
+            mv $${WORK_HOME}/src/nginx-upstream-fair-master.tar.gz.tmp ${WORK_HOME}/src/nginx-upstream-fair-master.tar.gz
+        else
+            rm -rf ${WORK_HOME}/src/nginx-upstream-fair-master.tar.gz.tmp
             exit $?
         fi
     fi
     
     if [ ! -d "${WORK_HOME}/src/nginx-sticky-module-ng-${STICKY_VERSION}" ]; then
-        apk add git
-        git clone https://bitbucket.org/nginx-goodies/nginx-sticky-module-ng/src/${STICKY_VERSION}/ ${WORK_HOME}/src/nginx-sticky-module-ng-${STICKY_VERSION}
-    # else
-    #     cd ${WORK_HOME}/src/nginx-sticky-module-ng-${STICKY_VERSION}
-    #     git pull origin master
+
+        git clone https://bitbucket.org/nginx-goodies/nginx-sticky-module-ng/src/${STICKY_VERSION}/ \
+            ${WORK_HOME}/src/nginx-sticky-module-ng-${STICKY_VERSION}
     fi
 
 }
 
 check_build_tools() {
     # 安装编译工具
-    apk add gcc g++ make autoconf patch
+    apk add gcc g++ make automake autoconf patch libtool
 }
 
 check_install_deps() {
     # 安装依赖
     apk add pcre-dev zlib-dev openssl-dev linux-headers
+    
+    if [ ${ENABLE_MODSEC:-false} = true ]; then
+        apk add libxml2-dev curl-dev geoip-dev
+    fi
+}
+
+func_build_modsecurity() {
+    if [ -d ${MODSEC_INSTALL_PATH} ]; then
+        rm -rf ${MODSEC_INSTALL_PATH}
+    fi
+
+    apk add git
+
+    cd ${WORK_HOME}/src/ModSecurity
+
+    git submodule init
+    git submodule update
+
+    if [ ! -x ./build.sh ]; then
+        chmod 755 ./build.sh
+    fi
+
+    if [ ! -x ./configure ]; then
+        chmod 755 ./configure
+    fi
+
+    ./build.sh
+    ./configure --prefix=${MODSEC_INSTALL_PATH}
+
+    make $j
+    make install
+    make clean
 }
 
 func_configure() {
@@ -81,6 +155,25 @@ func_configure() {
     check_source_file
     check_build_tools
     check_install_deps
+
+    if [ ${ENABLE_MODSEC:-false} = true ]; then
+        # 编译 ModSecurity
+        func_build_modsecurity
+
+        DYNAMIC_MODULE_ADDON="--add-dynamic-module=${WORK_HOME}/src/ModSecurity-nginx"
+
+        if [ ! -f /usr/lib/pkgconfig/modsecurity.pc ]; then
+            cp -af ${MODSEC_INSTALL_PATH}/* /usr
+            sed -i "s|^prefix=.*$|prefix=/usr|g" /usr/lib/pkgconfig/modsecurity.pc
+        fi
+
+        if [ -d "${WORK_HOME}/dist/owasp-modsecurity-crs" ]; then
+            rm -rf ${WORK_HOME}/dist/owasp-modsecurity-crs
+        fi
+
+        tar xf ${WORK_HOME}/src/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION}.tar.gz -C ${WORK_HOME}/dist
+        mv ${WORK_HOME}/dist/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION} ${WORK_HOME}/dist/owasp-modsecurity-crs
+    fi
 
     echo "Start configuring nginx..."
 
@@ -116,15 +209,16 @@ func_configure() {
     --with-http_secure_link_module \
     --with-http_stub_status_module \
     --with-http_v2_module \
+    --with-stream \
     --with-mail \
     --with-mail_ssl_module \
     --with-file-aio \
     --with-cpp_test_module \
     --with-debug \
     --with-threads \
-    --with-stream \
+    --with-compat \
     --with-cc-opt='-O2 -g -m64 -mtune=generic' \
-    --add-module=${WORK_HOME}/src/nginx-sticky-module-ng-${STICKY_VERSION} || bash -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
+    --add-module=${WORK_HOME}/src/nginx-sticky-module-ng-${STICKY_VERSION} ${DYNAMIC_MODULE_ADDON} || bash -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
 
     echo "Finished."
 }
@@ -153,25 +247,27 @@ func_install() {
         func_build
     fi
 
-    if [ -d ${INSTALL_PREFIX} ]; then
-        rm -rf ${INSTALL_PREFIX}
+    if [ -d ${NGINX_INSTALL_PATH} ]; then
+        rm -rf ${NGINX_INSTALL_PATH}
     fi
 
     echo "Start installing nginx..."
 
     cd ${WORK_HOME}/src/nginx-${NGINX_VERSION}
 
-    mkdir -p ${INSTALL_PREFIX}/sbin
+    mkdir -p ${NGINX_INSTALL_PATH}/sbin
 
     if [ $? -ne 0 ]; then
         echo -e "\033[31m[ERROR] Installation encountered with an error.\033[0m"
         exit 1
     fi
 
-    cp objs/nginx ${INSTALL_PREFIX}/sbin
-    cp -r conf html ${INSTALL_PREFIX}
+    cp ${WORK_HOME}/src/nginx-${NGINX_VERSION}/objs/nginx ${NGINX_INSTALL_PATH}/sbin
 
-    cd ${INSTALL_PREFIX}/conf
+    cp -r ${WORK_HOME}/src/nginx-${NGINX_VERSION}/conf ${NGINX_INSTALL_PATH}
+    cp -r ${WORK_HOME}/src/nginx-${NGINX_VERSION}/html ${NGINX_INSTALL_PATH}
+
+    cd ${NGINX_INSTALL_PATH}/conf
 
     cp fastcgi.conf fastcgi.conf.default
     cp fastcgi_params fastcgi_params.default
@@ -183,13 +279,27 @@ func_install() {
     cp uwsgi_params uwsgi_params.default
     cp win-utf win-utf.default
 
-    cp -r ${WORK_HOME}/conf ${INSTALL_PREFIX}
+    cp -r ${WORK_HOME}/conf ${NGINX_INSTALL_PATH}
+
+    if [ ${ENABLE_MODSEC:-false} = true ]; then
+        if [ ! -d "${NGINX_INSTALL_PATH}/conf/modules" ]; then
+            mkdir -p ${NGINX_INSTALL_PATH}/conf/modules
+        fi
+
+        if [ ! -d "${NGINX_INSTALL_PATH}/conf/examples/modsec" ]; then
+            mkdir -p ${NGINX_INSTALL_PATH}/conf/examples/modsec
+        fi
+
+        cp ${WORK_HOME}/src/nginx-${NGINX_VERSION}/objs/ngx_http_modsecurity_module.so ${NGINX_INSTALL_PATH}/conf/modules
+        cp ${WORK_HOME}/src/ModSecurity/modsecurity.conf-recommended ${NGINX_INSTALL_PATH}/conf/examples/modsec/modsecurity.conf
+        cp ${WORK_HOME}/src/ModSecurity/unicode.mapping ${NGINX_INSTALL_PATH}/conf/examples/modsec
+    fi
 
     echo "Finished."
 }
 
 func_clean() {
-    if [ -f ${INSTALL_PREFIX}/cache/nginx.pid ]; then
+    if [ -f ${NGINX_INSTALL_PATH}/cache/nginx.pid ]; then
         stop
     fi
 
@@ -201,6 +311,11 @@ func_clean() {
 
     if [ -d "${WORK_HOME}/src/nginx-upstream-fair-master" ]; then
         rm -rf "${WORK_HOME}/src/nginx-upstream-fair-master"
+    fi
+
+    if [ -d ${WORK_HOME}/src/ModSecurity/src/.libs ]; then
+        cd ${WORK_HOME}/src/ModSecurity
+        make clean
     fi
 
     echo "Finished."
@@ -215,7 +330,7 @@ docker_env() {
         # 创建容器
         docker run --name build_nginx_on_${IMAGE_NAME/:/_} \
             --volume=${WORK_HOME}:/data \
-            --cpu-shares=1024 --memory=512m --memory-swap=-1 \
+            --cpu-shares=256 --memory=2048m --memory-swap=0 \
             --oom-kill-disable \
             -t -i -d ${IMAGE_NAME} || exit 1
     else
@@ -252,12 +367,19 @@ Commands:
 }
 
 function func_build_docker_images() {
-   echo "Start building docker image..."
+    echo "Start building docker image..."
     # 修改 Dockerfile 中的 nginx 版本
     sed -i "s|FROM alpine:.*|FROM ${IMAGE_NAME}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG NGINX_VERSION=.*|ARG NGINX_VERSION=${NGINX_VERSION}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG ENABLE_MODSEC=.*|ARG ENABLE_MODSEC=${ENABLE_MODSEC}|g" ${WORK_HOME}/Dockerfile
     # 创建 nginx 镜像
-    docker build -t skygangsta/nginx:${NGINX_VERSION}-alpine $WORK_HOME
+    if [ ${ENABLE_MODSEC:-false} = true ]; then
+        sed -i "s|# COPY dist/modsecurity/ /usr|COPY dist/modsecurity/ /usr|g" ${WORK_HOME}/Dockerfile
+        docker build -t skygangsta/nginx-waf:${NGINX_VERSION}-alpine $WORK_HOME
+    else
+        sed -i "s|COPY dist/modsecurity/ /usr|# COPY dist/modsecurity/ /usr|g" ${WORK_HOME}/Dockerfile
+        docker build -t skygangsta/nginx:${NGINX_VERSION}-alpine $WORK_HOME
+    fi
     
     echo "Finished."
 }

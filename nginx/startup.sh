@@ -55,28 +55,36 @@ Commands:
 
 func_nginx_env() {
     if [ -f ${NGINX_HOME}/.dockerenv ]; then
-        if [ ! -f "${NGINX_HOME}/conf/nginx.conf" ]; then
-            if [ ! -d "${NGINX_HOME}/conf" ]; then
-                mkdir -p ${NGINX_HOME}/conf
-            fi
+        if [ ! -d "${NGINX_HOME}/conf" ]; then
+            mkdir -p ${NGINX_HOME}/conf
+        fi
 
+        if [ ! -s "${NGINX_HOME}/conf/nginx.conf" ]; then
             cp -r ${NGINX_HOME}/conf.example/* ${NGINX_HOME}/conf
         fi
 
-        if [ ! -d "${HTML_DATA_PATH}" ]; then
-            if [ ! -d "${HTML_DATA_PATH}" ]; then
-                mkdir -p ${HTML_DATA_PATH}
-            fi
-
-            cp -r ${NGINX_HOME}/html.example/* ${HTML_DATA_PATH}
+        if [ ! -d "${NGINX_HTML_PATH}" ]; then
+            mkdir -p ${NGINX_HTML_PATH}
+            cp -r ${NGINX_HOME}/html.example/* ${NGINX_HTML_PATH}
         else
             # index.html
-            if [ ! -f "${HTML_DATA_PATH}/index.html" ]; then
-                cp -r ${NGINX_HOME}/html.example/index.html ${HTML_DATA_PATH}
+            if [ ! -f "${NGINX_HTML_PATH}/index.html" ]; then
+                cp ${NGINX_HOME}/html.example/index.html ${NGINX_HTML_PATH}
             fi
             # 50x.html
-            if [ ! -f "${HTML_DATA_PATH}/50x.html" ]; then
-                cp -r ${NGINX_HOME}/html.example/50x.html ${HTML_DATA_PATH}
+            if [ ! -f "${NGINX_HTML_PATH}/50x.html" ]; then
+                cp ${NGINX_HOME}/html.example/50x.html ${NGINX_HTML_PATH}
+            fi
+        fi
+
+        if [ -d ${NGINX_HOME}/owasp-modsecurity-crs.example ]; then
+            if [ ! -d "${OWASP_MODSEC_CRS_PATH}" ]; then
+                mkdir -p ${OWASP_MODSEC_CRS_PATH}
+            fi
+
+            if [ ! -s "${OWASP_MODSEC_CRS_PATH}/crs-setup.conf" ]; then
+                cp -af ${NGINX_HOME}/owasp-modsecurity-crs.example/* ${OWASP_MODSEC_CRS_PATH}
+                cp ${OWASP_MODSEC_CRS_PATH}/crs-setup.conf.example ${OWASP_MODSEC_CRS_PATH}/crs-setup.conf
             fi
         fi
     fi
@@ -93,7 +101,7 @@ func_nginx_env() {
     chmod 755 ${NGINX_HOME}/sbin/nginx
 }
 
-function func_server_pids() {
+function func_nginx_pids() {
     if [ -f ${NGINX_HOME}/.dockerenv ]; then
         echo $(ps -ef | grep "nginx: master process" | grep -v grep | awk -F ' ' '{print $1}')
     else
@@ -101,10 +109,10 @@ function func_server_pids() {
     fi
 }
 
-function func_server_start() {
+function func_nginx_start() {
     func_nginx_env
 
-    PID=$(func_server_pids)
+    PID=$(func_nginx_pids)
 
     if [ "${PID:-default}" == "default" ]; then
         ${NGINX_HOME}/sbin/nginx -g "daemon off;" -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf
@@ -113,10 +121,10 @@ function func_server_start() {
     fi
 }
 
-function func_server_daemon() {
+function func_nginx_daemon() {
     func_nginx_env
 
-    PID=$(func_server_pids)
+    PID=$(func_nginx_pids)
 
     if [ "${PID:-default}" == "default" ]; then
         ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf
@@ -125,44 +133,51 @@ function func_server_daemon() {
     fi
 }
 
-function func_server_reload() {
+function func_nginx_reload() {
     ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf -s reload
 }
 
-function func_server_reopen() {
+function func_nginx_reopen() {
     ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf -s reopen
 }
 
-function func_server_stop() {
+function func_nginx_stop() {
     ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf -s stop
 }
 
-function func_server_quit() {
+function func_nginx_quit() {
     ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf -s quit
+}
+
+function func_nginx_test() {
+    ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_HOME}/conf/nginx.conf -t
 }
 
 case "$1" in
     start)
-        func_server_start
+        func_nginx_start
     ;;
     daemon)
-        func_server_daemon
+        func_nginx_daemon
     ;;
     reload)
-        func_server_reload
+        func_nginx_reload
     ;;
     reopen)
-        func_server_reopen
+        func_nginx_reopen
     ;;
     stop)
-        func_server_stop
+        func_nginx_stop
     ;;
     quit)
-        func_server_quit
+        func_nginx_quit
     ;;
     restart)
-        func_server_stop
-        func_server_start
+        func_nginx_stop
+        func_nginx_start
+    ;;
+    test)
+        func_nginx_test
     ;;
     help)
         func_help
