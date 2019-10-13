@@ -33,7 +33,7 @@ RUN set -ex && \
         krb5-libs libldap libpq mariadb-connector-c-dev unixodbc net-snmp-libs tidyhtml-libs libssl1.1 && \
     rm -rf /var/cache/apk/*
 
-ENV HTML_DATA_PATH=/usr/nginx/html
+ENV NGINX_HTML_PATH=/usr/nginx/html
 
 WORKDIR /usr/php
 

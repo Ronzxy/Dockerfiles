@@ -83,15 +83,15 @@ func_php_env() {
         cp -af ${PHP_HOME}/conf/* ${PHP_CONFIG_PATH}
     fi
 
-    if [ ! -f ${HTML_DATA_PATH}/tz.php ]; then
-        if [ -d ${HTML_DATA_PATH} ]; then
-            mkdir ${HTML_DATA_PATH}
+    if [ ! -f ${NGINX_HTML_PATH}/tz.php ]; then
+        if [ -d ${NGINX_HTML_PATH} ]; then
+            mkdir ${NGINX_HTML_PATH}
         fi
 
-        cp ${PHP_HOME}/tz.php ${HTML_DATA_PATH}
+        cp ${PHP_HOME}/tz.php ${NGINX_HTML_PATH}
 
-        if [ ! -f ${HTML_DATA_PATH}/index.php ]; then
-            cp ${PHP_HOME}/tz.php ${HTML_DATA_PATH}/index.php
+        if [ ! -f ${NGINX_HTML_PATH}/index.php ]; then
+            cp ${PHP_HOME}/tz.php ${NGINX_HTML_PATH}/index.php
         fi
     fi
 }
