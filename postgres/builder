@@ -7,13 +7,12 @@
 WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 BASE_NAME=$(basename $BASH_SOURCE)
 
-POSTGRES_VERSION=11.5
+POSTGRES_VERSION=12.0
 POSTGRES_VERSION_MAJOR=`printf $POSTGRES_VERSION | awk -F '.' '{print $1}'`
 POSTGRES_VERSION_MINOR=`printf $POSTGRES_VERSION | awk -F '.' '{print $2}'`
 BUILD_PREFIX=/usr
 INSTALL_PREFIX=${WORK_HOME}/dist/postgres-${POSTGRES_VERSION}
-CITUS_VERSION=8.3.2
-POSTGIS_VERSION=2.5.3
+PG_CONFIG=${INSTALL_PREFIX}/bin/pg_config
 IMAGE_NAME=alpine:edge
 
 export PATH=${INSTALL_PREFIX}/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
@@ -23,11 +22,23 @@ if [ -f /proc/cpuinfo ]; then
     j="-j$(grep 'model name' /proc/cpuinfo | wc -l || 1)"
 fi
 
+func_get_extensions_version() {
+    echo -e "Getting the latest version of the extensions..."
+
+    CITUS_VERSION=$(wget -qO - "https://api.github.com/repos/citusdata/citus/releases/latest" | grep '"tag_name": ".*' | awk -F: '{print $2}' | awk -F '"' '{print $2}' | awk -Fv '{print $2}')
+    HLL_VERSION=$(wget -qO - "https://api.github.com/repos/citusdata/postgresql-hll/releases/latest" | grep '"tag_name": ".*' | awk -F: '{print $2}' | awk -F '"' '{print $2}' | awk -Fv '{print $2}')
+    POSTGIS_VERSION=$(wget -qO - http://download.osgeo.org/postgis/source/ | grep -o title=\"postgis-.*.tar.gz\" | grep -v alpha | grep -v beta | grep -v rc | awk -F\" '{print $2}' | awk -F- '{print $2}' | awk -F.tar '{print $1}' | sort -rk 1 | head -n 1)
+}
+
 func_check_source_file() {
-    # # 检查并安装 wget
-    # if ! which wget 2>1 > /dev/null; then
-    #     apk add wget ca-certificates
-    # fi
+    func_get_extensions_version
+    
+    # 检查并安装 wget
+    if ! which wget 2>&1 > /dev/null; then
+        apk add wget ca-certificates
+    fi
+
+    echo -e "Checking source file..."
 
     if [ ! -d "${WORK_HOME}/src" ]; then
         mkdir -p "${WORK_HOME}/src"
@@ -53,6 +64,16 @@ func_check_source_file() {
         fi
     fi
 
+    if [ ! -s ${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}.tar.gz ]; then
+        wget https://github.com/citusdata/postgresql-hll/archive/v${HLL_VERSION}.tar.gz \
+            -O ${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}.tar.gz
+        
+        if [ $? -ne 0 ]; then
+            rm -rf ${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}.tar.gz
+            exit $?
+        fi
+    fi
+
     if [ ! -s ${WORK_HOME}/src/postgis-${POSTGIS_VERSION}.tar.gz ]; then
         wget https://download.osgeo.org/postgis/source/postgis-${POSTGIS_VERSION}.tar.gz \
             -O ${WORK_HOME}/src/postgis-${POSTGIS_VERSION}.tar.gz
@@ -72,7 +93,7 @@ func_check_build_tools() {
 func_check_install_deps() {
     # 安装依赖
     apk add zlib-dev libxml2-dev openssl-dev readline-dev libxslt-dev curl-dev \
-        ossp-uuid-dev libselinux-dev icu-dev flex bison geos-dev proj-dev gdal-dev || exit 1
+        ossp-uuid-dev libselinux-dev icu-dev flex bison geos-dev proj-dev gdal-dev linux-headers || exit 1
 
     # # --enable-tap-tests \
     # apk add perl-ipc-run
@@ -206,6 +227,18 @@ func_install_citus() {
     make install || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
 }
 
+func_install_hll() {
+    if [ -d "${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}" ]; then
+        rm -rf "${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}"
+    fi
+
+    tar xf ${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}.tar.gz -C ${WORK_HOME}/src && \
+        cd ${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}
+
+    make $j || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
+    make install || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
+}
+
 func_install_postgis() {
     if [ -d "${WORK_HOME}/src/postgis-${POSTGIS_VERSION}" ]; then
         rm -rf "${WORK_HOME}/src/postgis-${POSTGIS_VERSION}"
@@ -220,7 +253,7 @@ func_install_postgis() {
 }
 
 func_clean() {
-    echo "Start cleaning postgresql..."
+    echo "Start cleaning..."
 
     if [ -d "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}" ]; then
         rm -rf "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}"
@@ -228,6 +261,10 @@ func_clean() {
 
     if [ -d "${WORK_HOME}/src/citus-${CITUS_VERSION}" ]; then
         rm -rf "${WORK_HOME}/src/citus-${CITUS_VERSION}"
+    fi
+
+    if [ -d "${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}" ]; then
+        rm -rf "${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}"
     fi
 
     if [ -d "${WORK_HOME}/src/postgis-${POSTGIS_VERSION}" ]; then
@@ -246,7 +283,7 @@ func_docker_env() {
         # 创建容器
         docker run --name build_postgres_on_${IMAGE_NAME/:/_} \
             --volume=${WORK_HOME}:/data \
-            --cpu-shares=1024 --memory=512m --memory-swap=-1 \
+            --cpu-shares=1024 --memory=512m --memory-swap=0 \
             --oom-kill-disable=true \
             -t -i -d ${IMAGE_NAME} || exit $?
     else
@@ -314,10 +351,12 @@ case "$1" in
         exit 0
     ;;
     build)
-        func_install
-        func_install_contrib
-        func_install_citus
-        func_install_postgis
+        func_check_source_file || exit $?
+        func_install || exit $?
+        func_install_contrib || exit $?
+        func_install_citus || exit $?
+        func_install_hll || exit $?
+        func_install_postgis || exit $?
 
         exit 0
     ;;
@@ -327,6 +366,7 @@ case "$1" in
         exit 0
     ;;
     clean)
+        func_get_extensions_version
         func_clean
     ;;
     chown)

@@ -3,7 +3,8 @@
 Build and create postgres docker image from the alpine edge.
 
 ### Build
-```shell
+
+```sh
 git clone https://github.com/skygangsta/Dockerfiles.git
 cd Dockerfiles/postgres
 chmod 755 builder
