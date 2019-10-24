@@ -18,12 +18,14 @@ KERNEL_VERSION_MAJOR=`printf ${KERNEL_VERSION:-0.0.0} | awk -F '.' '{print $1 ? 
 KERNEL_VERSION_MINOR=`printf ${KERNEL_VERSION:-0.0.0} | awk -F '.' '{print $2 ? $2 : 0}'`
 KERNEL_VERSION_PATCH=`printf ${KERNEL_VERSION:-0.0.0} | awk -F '.' '{print $3 ? $3 : 0}'`
 
-PGHOME=/usr/postgres
-PGUSER=postgres
-PGGROUP=postgres
+USER=$(cat .dockerenv | grep USER | awk -F '=' '{print $2}')
+GROUP=$(cat .dockerenv | grep GROUP | awk -F '=' '{print $2}')
+
+PGUSER=${USER:-postgres}
+PGGROUP=${GROUP:-postgres}
 
 func_env() {
-    for i in $PGHOME/bin/*; do
+    for i in ${WORK_HOME}/bin/*; do
         if [ -x $i ]; then
             ln -sf $i /usr/bin/`basename $i`
         fi
@@ -35,7 +37,7 @@ func_env() {
         fi
     done
 
-    ldconfig $PGHOME/lib
+    ldconfig ${WORK_HOME}/lib
 }
 
 func_init() {
@@ -57,11 +59,14 @@ func_init() {
         mkdir -p ${PGDATA}
     fi
 
-    chown -R ${PGUSER}:${PGGROUP} ${PGDATA} > /dev/null 2>&1
-    chmod 0700 ${PGDATA} > /dev/null 2>&1
+    PGHOME=$(cat /etc/passwd | grep ${PGUSER} | awk -F ':' '{print $6}')
+
+    chown -R ${PGUSER}:${PGGROUP} ${PGHOME} || exit 1
+    chown -R ${PGUSER}:${PGGROUP} ${PGDATA} || exit 1
+    chmod 0700 ${PGDATA} || exit 1
 
     su - ${PGUSER} -c "echo ${POSTGRES_PASSWORD} > \${HOME}/POSTGRES_PASSWORD"
-    su - ${PGUSER} -c "$PGHOME/bin/initdb -D ${PGDATA} -E UTF-8 -k --locale=${LANG} -T simple --user=${PGUSER} --pwfile=\${HOME}/POSTGRES_PASSWORD"
+    su - ${PGUSER} -c "${WORK_HOME}/bin/initdb -D ${PGDATA} -E UTF-8 -k --locale=${LANG} -T simple --user=${PGUSER} --pwfile=\${HOME}/POSTGRES_PASSWORD"
     su - ${PGUSER} -c "cp ${PGDATA}/postgresql.conf ${PGDATA}/postgresql.conf.default"
     su - ${PGUSER} -c "mv \${HOME}/POSTGRES_PASSWORD ${PGDATA}"
     
@@ -84,8 +89,8 @@ func_init() {
     sed -i -E "s/#track_functions = none/track_functions = all/g" ${PGDATA}/postgresql.conf
     sed -i -E "s/#track_activities = on/track_activities = on/g" ${PGDATA}/postgresql.conf
     # 测试 timing 代价小于 50 开启收集 I/O 信息
-    if [ -x $PGHOME/bin/pg_test_timing ]; then
-		TIMING=$($PGHOME/bin/pg_test_timing | grep 'Per loop time including overhead' | awk -F ': ' '{print $2}')
+    if [ -x ${WORK_HOME}/bin/pg_test_timing ]; then
+		TIMING=$(${WORK_HOME}/bin/pg_test_timing | grep 'Per loop time including overhead' | awk -F ': ' '{print $2}')
 		TIMING_UNIT=$(echo $TIMING | awk -F ' ' '{print $2}')
 		TIMING=$(echo $TIMING | awk -F ' ' '{print $1}')
 		TIMING_REST=$(echo "$TIMING  50" | awk '{if ($1 < $2) print 1;else print 0}')
@@ -154,7 +159,7 @@ func_backup() {
     chown -R ${PGUSER}:${PGGROUP} ${PGDATA} > /dev/null 2>&1
     chmod 0700 ${PGDATA} > /dev/null 2>&1
 
-    su - ${PGUSER} -c "$PGHOME/bin/pg_basebackup -h ${PGMASTER_HOST} -p ${PGMASTER_PORT} -U postgres -F p -P -R -D ${PGDATA} -l base_backup_$(date +%Y_%m_%d_%H%M%S)"
+    su - ${PGUSER} -c "${WORK_HOME}/bin/pg_basebackup -h ${PGMASTER_HOST} -p ${PGMASTER_PORT} -U postgres -F p -P -R -D ${PGDATA} -l base_backup_$(date +%Y_%m_%d_%H%M%S)"
 
     sed -i -E "s/#hot_standby = on/hot_standby = on/g" ${PGDATA}/postgresql.conf
 
@@ -193,15 +198,15 @@ func_start() {
     fi
 
     # 启动 PostgreSQL
-    if [ -f ${PGHOME}/.dockerenv ]; then
-        su - ${PGUSER} -c "$PGHOME/bin/postgres -D ${PGDATA}"
+    if [ -f ${WORK_HOME}/.dockerenv ]; then
+        su - ${PGUSER} -c "${WORK_HOME}/bin/postgres -D ${PGDATA}"
     else
-        su - ${PGUSER} -c "$PGHOME/bin/pg_ctl -D ${PGDATA} -w start"
+        su - ${PGUSER} -c "${WORK_HOME}/bin/pg_ctl -D ${PGDATA} -w start"
     fi
 
     # # 执行配置
     # if [ "${PGTYPE}" == "MASTER" ]; then
-    #     PSQL=($PGHOME/bin/psql -v ON_ERROR_STOP=1)
+    #     PSQL=(${WORK_HOME}/bin/psql -v ON_ERROR_STOP=1)
     #     "${PSQL[@]}" --username postgres <<-EOSQL
     #         --
     #         -- What's done in this file shouldn't be replicated
@@ -215,14 +220,14 @@ func_stop() {
 
     if [ -f "${PGDATA}/postmaster.pid" ]; then
         if [ "$1" = "" ]; then
-            su - ${PGUSER} -c "$PGHOME/bin/pg_ctl -D ${PGDATA} stop -m fast"
+            su - ${PGUSER} -c "${WORK_HOME}/bin/pg_ctl -D ${PGDATA} stop -m fast"
         else
-            su - ${PGUSER} -c "$PGHOME/bin/pg_ctl -D ${PGDATA} stop -m $1"
+            su - ${PGUSER} -c "${WORK_HOME}/bin/pg_ctl -D ${PGDATA} stop -m $1"
         fi
         # kill -TERM $(head -1 ${PGDATA}/postmaster.pid)
-        # su - postgres -c "$PGHOME/bin/pg_ctl -D ${PGDATA} stop -m smart"
-        # su - postgres -c "$PGHOME/bin/pg_ctl -D ${PGDATA} stop -m fast"
-        # su - postgres -c "$PGHOME/bin/pg_ctl -D ${PGDATA} stop -m immediate"
+        # su - postgres -c "${WORK_HOME}/bin/pg_ctl -D ${PGDATA} stop -m smart"
+        # su - postgres -c "${WORK_HOME}/bin/pg_ctl -D ${PGDATA} stop -m fast"
+        # su - postgres -c "${WORK_HOME}/bin/pg_ctl -D ${PGDATA} stop -m immediate"
     fi
 }
 
@@ -230,7 +235,7 @@ func_reload() {
     func_env
 
     if [ -f "${PGDATA}/postmaster.pid" ]; then
-        su - ${PGUSER} -c "$PGHOME/bin/pg_ctl -D ${PGDATA} reload"
+        su - ${PGUSER} -c "${WORK_HOME}/bin/pg_ctl -D ${PGDATA} reload"
     fi
 }
 

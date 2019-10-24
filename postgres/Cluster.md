@@ -180,7 +180,7 @@ ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * FR
 ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SET citus.shard_count = 64;"
 # 设置表分片的副本数量
 ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SET citus.shard_replication_factor = 2;"
-# 设置
+# 设置Citus在使用postgresql-hll扩展计算count（distinct）时所需的错误率
 ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SET citus.count_distinct_error_rate = 0.005;"
 
 

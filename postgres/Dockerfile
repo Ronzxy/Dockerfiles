@@ -26,6 +26,7 @@ ENV LANG=zh_CN.UTF-8
 ARG ZONE_NAME="Asia/Shanghai"
 ARG USER=postgres
 ARG GROUP=postgres
+ARG HOME=/var/lib/postgres
 
 RUN set -ex && \
     echo http://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories && \
@@ -37,18 +38,18 @@ RUN set -ex && \
     cat /etc/group | grep :999: | awk -F ':' '{print "groupmod -g 1999 "$1}' | sh && \
     cat /etc/passwd | grep :999: | awk -F ':' '{print "usermod -u 1999 "$1}' | sh && \
     cat /etc/group | grep ${GROUP}: | awk -F ':' '{print "groupmod -g 999 "$1}' | sh && \
-    cat /etc/passwd | grep ${USER}: | awk -F ':' '{print "usermod -u 999 "$1}' | sh && \
+    cat /etc/passwd | grep ${USER}: | awk -F ':' '{print "usermod -u 999 -m -d ${HOME} "$1}' | sh && \
     cat /etc/group | grep ${GROUP}: || sh -c "groupadd -r -g 999 ${GROUP}" && \
-    cat /etc/passwd | grep ${USER}: || sh -c "useradd -r -u 999 -g ${GROUP} ${USER} -m -d /home/${USER} -s /bin/sh" && \
-    HOME=$(cat /etc/passwd | grep www | awk -F ':' '{print $6}') && \
-    if [ ! -d ${HOME} ]; then mkdir -p ${HOME}; fi && \
+    cat /etc/passwd | grep ${USER}: || sh -c "useradd -r -u 999 -g ${GROUP} ${USER} -m -d ${HOME} -s /bin/sh" && \
+    HOME=$(cat /etc/passwd | grep ${USER} | awk -F ':' '{print $6}') && \
+    if [ ! -d ${HOME} ]; then mkdir -p ${HOME}; chown ${USER}:${GROUP} ${HOME}; fi && \
     apk del shadow && \
     rm -rf /var/cache/apk/*
 
 # 安装依赖包
 RUN set -ex && \
     apk upgrade && \
-    apk add zlib libssl1.1 libxml2 readline libxslt libcurl ossp-uuid libselinux icu-libs flex bison geos proj gdal && \
+    apk add zlib libssl1.1 libxml2 readline libxslt libcurl ossp-uuid libselinux icu-libs json-c flex bison geos proj gdal && \
     rm -rf /var/cache/apk/*
 
     # # --enable-tap-tests \
@@ -66,10 +67,11 @@ RUN set -ex && \
     # # --with-pam \
     # apk add krb5-libs libldap linux-pam python3 tcl perl
 
+VOLUME ${HOME}
 
 ARG POSTGRES_VERSION=12.0
 
-ENV PGDATA="/var/lib/postgres"
+ENV PGDATA="${HOME}/data"
 ENV POSTGRES_PASSWORD=""
 ENV NETWORK="127.0.0.1/32"
 # MASTER/BACKUP
@@ -86,7 +88,7 @@ WORKDIR /usr/postgres
 COPY startup.sh dist/postgres-${POSTGRES_VERSION}/ ./
 
 RUN chmod 755 startup.sh && \
-    > .dockerenv
+    printf "USER=%s\nGROUP=%s\n" ${USER} ${GROUP} > .dockerenv
 
 EXPOSE 5432
 

@@ -87,13 +87,13 @@ func_check_source_file() {
 
 func_check_build_tools() {
     # 安装编译工具
-    apk add gcc g++ make autoconf patch || exit 1
+    apk add build-base || exit 1
 }
 
 func_check_install_deps() {
     # 安装依赖
     apk add zlib-dev libxml2-dev openssl-dev readline-dev libxslt-dev curl-dev \
-        ossp-uuid-dev libselinux-dev icu-dev flex bison geos-dev proj-dev gdal-dev linux-headers || exit 1
+        ossp-uuid-dev libselinux-dev icu-dev flex bison geos-dev proj-dev gdal-dev linux-headers json-c-dev || exit 1
 
     # # --enable-tap-tests \
     # apk add perl-ipc-run
