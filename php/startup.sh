@@ -72,6 +72,7 @@ func_php_env() {
     fi
 
     if [ -f "${NGINX_HOME}/conf/conf.d/http/default.conf" ]; then
+        # 查找 # location ~ \.php$ { 行至 # } 作为替换区域
         sed -i '/^.*# location ~ \\\.php\$ {$/,/^.*# }$/{s/# //g}' ${NGINX_HOME}/conf/conf.d/http/default.conf
     fi
 
