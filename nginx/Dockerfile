@@ -43,9 +43,9 @@ RUN chmod 755 startup.sh && \
     mv html html.example && \
     > .dockerenv
 
-ARG ENABLE_MODSEC=true
+ARG ENABLE_MODSEC=NO
 
-COPY dist/modsecurity/ /usr
+# COPY dist/modsecurity/ /usr
 COPY dist/owasp-modsecurity-crs ./owasp-modsecurity-crs.example
 
 RUN if [ ${ENABLE_MODSEC:-false} = true ]; then \
@@ -53,7 +53,8 @@ RUN if [ ${ENABLE_MODSEC:-false} = true ]; then \
         sed -i "s|^# load_module.*/ngx_http_modsecurity_module.so;|load_module conf/modules/ngx_http_modsecurity_module.so;|g" conf.example/nginx.conf; \
         sed -i "s|^SecRuleEngine.*|# &\\n\\nSecRuleEngine On|g" conf.example/examples/modsec/modsecurity.conf; \
         apk add --no-cache libcurl libxml2 libstdc++ geoip; \
-    fi
+    fi && \
+    rm -rf /var/cache/apk/*
 
 EXPOSE 80 443
 

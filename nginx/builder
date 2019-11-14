@@ -16,7 +16,8 @@ NGINX_VERSION_MINOR=`printf $NGINX_VERSION | awk -F '.' '{print $2}'`
 BUILD_PREFIX=/usr
 NGINX_INSTALL_PATH=${WORK_HOME}/dist/nginx-${NGINX_VERSION}
 STICKY_VERSION=1.2.6
-ENABLE_MODSEC=`echo TRUE | tr 'A-Z' 'a-z'`
+# YES or NO
+ENABLE_MODSEC=NO
 MODSEC_VERSION=3.0.3
 MODSEC_INSTALL_PATH=${WORK_HOME}/dist/modsecurity
 OWASP_MODSEC_CRS_VERSION=3.2.0
@@ -50,7 +51,7 @@ check_source_file() {
         fi
     fi
 
-    if [ ${ENABLE_MODSEC:-false} = true ]; then
+    if [ ${ENABLE_MODSEC:-NO} = YES ]; then
 
         if [ ! -d "${WORK_HOME}/src/ModSecurity" ]; then
 
@@ -114,7 +115,7 @@ check_install_deps() {
     # 安装依赖
     apk add pcre-dev zlib-dev openssl-dev linux-headers
     
-    if [ ${ENABLE_MODSEC:-false} = true ]; then
+    if [ ${ENABLE_MODSEC:-NO} = YES ]; then
         apk add libxml2-dev curl-dev geoip-dev
     fi
 }
@@ -156,7 +157,7 @@ func_configure() {
     check_build_tools
     check_install_deps
 
-    if [ ${ENABLE_MODSEC:-false} = true ]; then
+    if [ ${ENABLE_MODSEC:-NO} = YES ]; then
         # 编译 ModSecurity
         func_build_modsecurity
 
@@ -281,7 +282,7 @@ func_install() {
 
     cp -r ${WORK_HOME}/conf ${NGINX_INSTALL_PATH}
 
-    if [ ${ENABLE_MODSEC:-false} = true ]; then
+    if [ ${ENABLE_MODSEC:-NO} = YES ]; then
         if [ ! -d "${NGINX_INSTALL_PATH}/conf/modules" ]; then
             mkdir -p ${NGINX_INSTALL_PATH}/conf/modules
         fi
@@ -373,7 +374,7 @@ function func_build_docker_images() {
     sed -i "s|ARG NGINX_VERSION=.*|ARG NGINX_VERSION=${NGINX_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG ENABLE_MODSEC=.*|ARG ENABLE_MODSEC=${ENABLE_MODSEC}|g" ${WORK_HOME}/Dockerfile
     # 创建 nginx 镜像
-    if [ ${ENABLE_MODSEC:-false} = true ]; then
+    if [ ${ENABLE_MODSEC:-NO} = YES ]; then
         sed -i "s|# COPY dist/modsecurity/ /usr|COPY dist/modsecurity/ /usr|g" ${WORK_HOME}/Dockerfile
         docker build -t skygangsta/nginx-waf:${NGINX_VERSION}-alpine $WORK_HOME
     else
