@@ -137,7 +137,7 @@ function func_build_docker_images() {
    echo "Start building docker image..."
     # 修改 Dockerfile 中的 nginx 版本
     sed -i "s|FROM alpine:.*|FROM ${IMAGE_NAME}|g" ${WORK_HOME}/Dockerfile
-    sed -i "s|COPY startup.sh dist/redis-.*|COPY startup.sh dist/redis-${REDIS_VERSION}/ ./|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG REDIS_VERSION=.*|ARG REDIS_VERSION=${REDIS_VERSION}|g" ${WORK_HOME}/Dockerfile
     # 创建 nginx 镜像
     docker build -t skygangsta/redis:$REDIS_VERSION-alpine $WORK_HOME
     

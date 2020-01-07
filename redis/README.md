@@ -3,7 +3,8 @@
 Build and create redis docker image from the alpine edge.
 
 ### Build
-```shell
+
+```sh
 git clone https://github.com/skygangsta/Dockerfiles.git
 cd Dockerfiles/redis
 chmod 755 builder
@@ -21,7 +22,7 @@ ${CONTAINER_ENGINE} run --name redis \
     -v /home/storage/run/docker/redis:/var/lib/redis:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
     --cpu-shares=512 --memory=8G --memory-swap=0 \
-    --restart always \
+    --restart=always \
     --oom-kill-disable \
     -it -d skygangsta/redis:5.0.5-alpine
 ```
