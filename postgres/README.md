@@ -21,11 +21,11 @@ CONTAINER_ENGINE=docker
 ${CONTAINER_ENGINE} run --name postgres \
     -h postgres.erayun.cn \
     -p 5432:5432 \
-    -v /home/storage/run/docker/postgres/data:/var/lib/postgres:rw,z \
+    -v postgres-data:/var/lib/postgres:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
     --cpu-shares=1024 --memory=16G --memory-swap=0 \
     --restart=always \
     --oom-kill-disable \
-    -it -d skygangsta/postgres:11.5-alpine
+    -it -d skygangsta/postgres:12.1
 
 ```

@@ -1,13 +1,27 @@
-FROM alpine:edge
+FROM alpine:latest
+
+ARG ALPINE_VERSION=latest-stable
+
+RUN set -ex && \
+    echo "" > /etc/apk/repositories && \
+    if [ "${ALPINE_VERSION}" != "edge" ]; then ALPINE_VERSION=v`cat /etc/alpine-release | awk -F '.' '{print $1"."$2}'`; fi && \
+    echo "https://mirrors.aliyun.com/alpine/${ALPINE_VERSION}/main" >> /etc/apk/repositories && \
+    echo "https://mirrors.aliyun.com/alpine/${ALPINE_VERSION}/community" >> /etc/apk/repositories && \
+    if [ "${ALPINE_VERSION}" = "edge" ]; then echo "https://mirrors.aliyun.com/alpine/${ALPINE_VERSION}/testing" >> /etc/apk/repositories; fi && \
+    echo "https://mirrors.ustc.edu.cn/alpine/${ALPINE_VERSION}/main" >> /etc/apk/repositories && \
+    echo "https://mirrors.ustc.edu.cn/alpine/${ALPINE_VERSION}/community" >> /etc/apk/repositories && \
+    if [ "${ALPINE_VERSION}" = "edge" ]; then echo "https://mirrors.ustc.edu.cn/alpine/${ALPINE_VERSION}/testing" >> /etc/apk/repositories; fi && \
+    echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/main" >> /etc/apk/repositories && \
+    echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/community" >> /etc/apk/repositories && \
+    if [ "${ALPINE_VERSION}" = "edge" ]; then echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/testing" >> /etc/apk/repositories; fi && \
+    apk upgrade
 
 ARG ZONE_NAME="Asia/Shanghai"
 ARG USER=redis
 ARG GROUP=redis
-ARG HOME=/home/${USER}
+ARG HOME=/usr/redis
 
 RUN set -ex && \
-    echo http://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories && \
-    apk upgrade && \
     apk add shadow tzdata && \
     # 初始化时区
     cp /usr/share/zoneinfo/${ZONE_NAME} /etc/localtime && echo "Asia/Shanghai" > /etc/timezone && \
@@ -20,8 +34,25 @@ RUN set -ex && \
     cat /etc/passwd | grep ${USER}: || sh -c "useradd -r -u 999 -g ${GROUP} ${USER} -m -d ${HOME} -s /bin/sh" && \
     HOME=$(cat /etc/passwd | grep ${USER} | awk -F ':' '{print $6}') && \
     if [ ! -d ${HOME} ]; then mkdir -p ${HOME}; chown ${USER}:${GROUP} ${HOME}; fi && \
-    apk del shadow tzdata && \
-    rm -rf /var/cache/apk/*
+    apk del shadow tzdata
+
+ARG REDIS_VERSION=5.0.7
+
+RUN set -ex && \
+    WORK_HOME="$(mktemp -d)" && cd ${WORK_HOME} && \
+    wget -c http://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz \
+        -O ${WORK_HOME}/redis-${REDIS_VERSION}.tar.gz && \
+    # wget -c https://github.com/antirez/redis/archive/${REDIS_VERSION}.tar.gz \
+    #     -O ${WORK_HOME}/redis-${REDIS_VERSION}.tar.gz && \
+    apk add build-base linux-headers && \
+    #apk add gcc g++ make autoconf patch
+    tar xf ${WORK_HOME}/redis-${REDIS_VERSION}.tar.gz -C ${WORK_HOME} && \
+    cd ${WORK_HOME}/redis-${REDIS_VERSION} && \
+    make -j "$(nproc)" PREFIX=${HOME} install && \
+    mkdir -p ${HOME}/conf && \
+    cp *.conf ${HOME}/conf && \
+    apk del build-base linux-headers && \
+    rm -rf /tmp/* /var/cache/apk/*
 
 ENV REDIS_PORT=6379
 ENV REDIS_DATA=/var/lib/redis
@@ -30,12 +61,10 @@ ENV CLUSTER_ENABLE=no
 
 VOLUME [ "${REDIS_DATA}" ]
 
-WORKDIR /usr/redis
-
-ARG REDIS_VERSION=5.0.5
+WORKDIR ${HOME}
 
 # 复制数据
-COPY startup.sh dist/redis-${REDIS_VERSION}/ ./
+COPY startup.sh ./
 
 RUN chmod 755 startup.sh && \
     > .dockerenv

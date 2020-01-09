@@ -1,311 +1,20 @@
 #!/bin/bash
 #
-# 作者：Skygangsta<skygangsta@hotmail.com>
+# Author: sky<skygangsta@hotmail.com>
 #
-# Postgres 编译脚本，仅支持 Alpine Linux 系统
+# Postgres docker image build script
 
 WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 BASE_NAME=$(basename $BASH_SOURCE)
 
-POSTGRES_VERSION=12.0
+POSTGRES_VERSION=12.1
 POSTGRES_VERSION_MAJOR=`printf $POSTGRES_VERSION | awk -F '.' '{print $1}'`
 POSTGRES_VERSION_MINOR=`printf $POSTGRES_VERSION | awk -F '.' '{print $2}'`
-BUILD_PREFIX=/usr
-INSTALL_PREFIX=${WORK_HOME}/dist/postgres-${POSTGRES_VERSION}
-PG_CONFIG=${INSTALL_PREFIX}/bin/pg_config
-IMAGE_NAME=alpine:edge
+ALPINE_VERSION=latest-stable
 
 export PATH=${INSTALL_PREFIX}/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 
-# 探测cpu核心数
-if [ -f /proc/cpuinfo ]; then
-    j="-j$(grep 'model name' /proc/cpuinfo | wc -l || 1)"
-fi
 
-func_get_extensions_version() {
-    echo -e "Getting the latest version of the extensions..."
-
-    CITUS_VERSION=$(wget -qO - "https://api.github.com/repos/citusdata/citus/releases/latest" | grep '"tag_name": ".*' | awk -F: '{print $2}' | awk -F '"' '{print $2}' | awk -Fv '{print $2}')
-    HLL_VERSION=$(wget -qO - "https://api.github.com/repos/citusdata/postgresql-hll/releases/latest" | grep '"tag_name": ".*' | awk -F: '{print $2}' | awk -F '"' '{print $2}' | awk -Fv '{print $2}')
-    POSTGIS_VERSION=$(wget -qO - http://download.osgeo.org/postgis/source/ | grep -o title=\"postgis-.*.tar.gz\" | grep -v alpha | grep -v beta | grep -v rc | awk -F\" '{print $2}' | awk -F- '{print $2}' | awk -F.tar '{print $1}' | sort -rk 1 | head -n 1)
-}
-
-func_check_source_file() {
-    func_get_extensions_version
-    
-    # 检查并安装 wget
-    if ! which wget 2>&1 > /dev/null; then
-        apk add wget ca-certificates
-    fi
-
-    echo -e "Checking source file..."
-
-    if [ ! -d "${WORK_HOME}/src" ]; then
-        mkdir -p "${WORK_HOME}/src"
-    fi
-
-    if [ ! -s ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}.tar.bz2 ]; then
-        wget https://ftp.postgresql.org/pub/source/v${POSTGRES_VERSION}/postgresql-${POSTGRES_VERSION}.tar.bz2 \
-            -O ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}.tar.bz2
-        
-        if [ $? -ne 0 ]; then
-            rm -rf ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}.tar.gz
-            exit $?
-        fi
-    fi
-
-    if [ ! -s ${WORK_HOME}/src/citus-${CITUS_VERSION}.tar.gz ]; then
-        wget https://github.com/citusdata/citus/archive/v${CITUS_VERSION}.tar.gz \
-            -O ${WORK_HOME}/src/citus-${CITUS_VERSION}.tar.gz
-        
-        if [ $? -ne 0 ]; then
-            rm -rf ${WORK_HOME}/src/citus-${CITUS_VERSION}.tar.gz
-            exit $?
-        fi
-    fi
-
-    if [ ! -s ${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}.tar.gz ]; then
-        wget https://github.com/citusdata/postgresql-hll/archive/v${HLL_VERSION}.tar.gz \
-            -O ${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}.tar.gz
-        
-        if [ $? -ne 0 ]; then
-            rm -rf ${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}.tar.gz
-            exit $?
-        fi
-    fi
-
-    if [ ! -s ${WORK_HOME}/src/postgis-${POSTGIS_VERSION}.tar.gz ]; then
-        wget https://download.osgeo.org/postgis/source/postgis-${POSTGIS_VERSION}.tar.gz \
-            -O ${WORK_HOME}/src/postgis-${POSTGIS_VERSION}.tar.gz
-        
-        if [ $? -ne 0 ]; then
-            rm -rf ${WORK_HOME}/src/postgis-${POSTGIS_VERSION}.tar.gz
-            exit $?
-        fi
-    fi
-}
-
-func_check_build_tools() {
-    # 安装编译工具
-    apk add build-base || exit 1
-}
-
-func_check_install_deps() {
-    # 安装依赖
-    apk add zlib-dev libxml2-dev openssl-dev readline-dev libxslt-dev curl-dev \
-        ossp-uuid-dev libselinux-dev icu-dev flex bison geos-dev proj-dev gdal-dev linux-headers json-c-dev || exit 1
-
-    # # --enable-tap-tests \
-    # apk add perl-ipc-run
-
-    # # --enable-nls="zh_CN" 在 alpine 会产生编译错误
-    # apk add gettext-dev
-
-    # # 这些功能会造成容器尺寸非常巨大
-    # # --with-gssapi \
-    # # --with-ldap \
-    # # --with-tcl \
-    # # --with-perl \
-    # # --with-python \
-    # # --with-pam \
-    # apk add krb5-dev openldap-dev linux-pam-dev python3-dev tcl-dev perl-dev
-
-    # # configure: error: prove not found
-    # apk add perl-utils
-}
-
-func_configure() {
-    if [ -f "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}/src/backend/postgres" ]; then
-        func_clean
-    fi
-
-    func_check_source_file
-    func_check_build_tools
-    func_check_install_deps
-
-    echo "Start configuring postgresql..."
-
-    tar xf ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}.tar.bz2 -C ${WORK_HOME}/src && \
-        cd ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}
-
-    ./configure --prefix=${INSTALL_PREFIX} \
-        --enable-integer-datetimes \
-		--enable-thread-safety \
-		--disable-rpath \
-		--with-ossp-uuid \
-		--with-gnu-ld \
-		--with-pgport=5432 \
-        --with-libedit-preferred \
-		--with-system-tzdata=/usr/share/zoneinfo \
-        --with-zlib \
-		--with-openssl \
-		--with-libxml \
-		--with-libxslt \
-		--with-icu \
-        --with-selinux \
-        --with-libraries=${INSTALL_PREFIX}/lib/ \
-        --with-includes=${INSTALL_PREFIX}/include/ || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
-
-    echo "Finished."
-
-
-    # --enable-tap-tests \
-    # --enable-nls="zh_CN zh_TW" \
-    # # 忽略 debuginfo 保持较小的程序尺寸
-    # --enable-debug \
-    # # 这些功能会造成容器尺寸非常巨大
-    # --with-gssapi \
-    # --with-ldap \
-    # --with-tcl \
-    # --with-perl \
-    # --with-python \
-    # --with-pam \
-}
-
-func_build() {
-    if [ ! -f "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}/src/backend/postgres" ]; then
-        func_configure
-    fi
-
-    echo "Start building postgresql..."
-
-    cd ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}
-
-    make $j || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
-
-    if [ $? -ne 0 ]; then
-        echo -e "\033[31m[ERROR] Compile encountered with an error.\033[0m"
-        
-        func_clean
-        exit 1
-    fi
-
-    echo "Finished."
-}
-
-func_install() {
-    if [ ! -x "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}/src/backend/postgres" ]; then
-        func_build
-    fi
-
-    if [ -d ${INSTALL_PREFIX} ]; then
-        rm -rf ${INSTALL_PREFIX}
-    fi
-
-    echo "Start installing postgresql..."
-
-    cd ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}
-
-    make install || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
-
-    echo "Finished."
-}
-
-func_install_contrib() {
-    # 编译外围模块
-    echo "Start compiling contrib..."
-    cd ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}/contrib
-    make $j
-    make install
-    # 编译隔离测试脚本
-    echo "Start compiling test isolation..."
-    cd ${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}/src/test/isolation
-    make $j
-    make install
-}
-
-func_install_citus() {
-    if [ -d "${WORK_HOME}/src/citus-${CITUS_VERSION}" ]; then
-        rm -rf "${WORK_HOME}/src/citus-${CITUS_VERSION}"
-    fi
-
-    tar xf ${WORK_HOME}/src/citus-${CITUS_VERSION}.tar.gz -C ${WORK_HOME}/src && \
-        cd ${WORK_HOME}/src/citus-${CITUS_VERSION}
-
-    ./configure --prefix=${INSTALL_PREFIX} || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
-    make $j || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
-    make install || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
-}
-
-func_install_hll() {
-    if [ -d "${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}" ]; then
-        rm -rf "${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}"
-    fi
-
-    tar xf ${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}.tar.gz -C ${WORK_HOME}/src && \
-        cd ${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}
-
-    make $j || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
-    make install || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
-}
-
-func_install_postgis() {
-    if [ -d "${WORK_HOME}/src/postgis-${POSTGIS_VERSION}" ]; then
-        rm -rf "${WORK_HOME}/src/postgis-${POSTGIS_VERSION}"
-    fi
-
-    tar xf ${WORK_HOME}/src/postgis-${POSTGIS_VERSION}.tar.gz -C ${WORK_HOME}/src && \
-        cd ${WORK_HOME}/src/postgis-${POSTGIS_VERSION}
-
-    ./configure --prefix=${INSTALL_PREFIX} || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
-    make $j || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
-    make install || sh -c "${WORK_HOME}/${BASE_NAME} clean && exit 1"
-}
-
-func_clean() {
-    echo "Start cleaning..."
-
-    if [ -d "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}" ]; then
-        rm -rf "${WORK_HOME}/src/postgresql-${POSTGRES_VERSION}"
-    fi
-
-    if [ -d "${WORK_HOME}/src/citus-${CITUS_VERSION}" ]; then
-        rm -rf "${WORK_HOME}/src/citus-${CITUS_VERSION}"
-    fi
-
-    if [ -d "${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}" ]; then
-        rm -rf "${WORK_HOME}/src/postgresql-hll-${HLL_VERSION}"
-    fi
-
-    if [ -d "${WORK_HOME}/src/postgis-${POSTGIS_VERSION}" ]; then
-        rm -rf "${WORK_HOME}/src/postgis-${POSTGIS_VERSION}"
-    fi  
-
-    echo "Finished."
-}
-
-func_docker_env() {
-    echo "Start initializing docker env..."
-
-    docker ps -a | grep build_postgres_on_${IMAGE_NAME/:/_} > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        # 容器未创建
-        # 创建容器
-        docker run --name build_postgres_on_${IMAGE_NAME/:/_} \
-            --volume=${WORK_HOME}:/data \
-            --cpu-shares=1024 --memory=512m --memory-swap=0 \
-            --oom-kill-disable=true \
-            -t -i -d ${IMAGE_NAME} || exit $?
-    else
-        docker ps | grep build_postgres_on_${IMAGE_NAME/:/_} > /dev/null 2>&1
-        if [ $? -ne 0 ]; then
-            docker start build_postgres_on_${IMAGE_NAME/:/_} || exit $?
-        fi
-    fi
-
-    docker exec -it build_postgres_on_${IMAGE_NAME/:/_} apk add bash || exit $?
-    docker exec -it build_postgres_on_${IMAGE_NAME/:/_} /data/builder sources ${IMAGE_NAME} || exit $?
-    docker exec -it build_postgres_on_${IMAGE_NAME/:/_} apk upgrade || exit $?
-
-    echo "Finished."
-}
-
-add_apk_source() {
-    if [ ! -f .add_apk_source ]; then
-        echo http://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories
-        echo "apk" > .add_apk_source
-    fi
-}
 
 function func_help() {
     echo "
@@ -314,63 +23,45 @@ Usage:
 
 Commands:
     image       - Build a docker image
-    build       - Compile source code
     help        - Show this information
 "
 }
 
 function func_build_docker_images() {
+    echo "Getting the latest version of the extensions..."
+    CITUS_VERSION=$(wget -qO - "https://api.github.com/repos/citusdata/citus/releases/latest" | grep '"tag_name": ".*' | awk -F: '{print $2}' | awk -F '"' '{print $2}' | awk -Fv '{print $2}')
+    HLL_VERSION=$(wget -qO - "https://api.github.com/repos/citusdata/postgresql-hll/releases/latest" | grep '"tag_name": ".*' | awk -F: '{print $2}' | awk -F '"' '{print $2}' | awk -Fv '{print $2}')
+    POSTGIS_VERSION=$(wget -qO - http://download.osgeo.org/postgis/source/ | grep -o title=\"postgis-.*.tar.gz\" | grep -v alpha | grep -v beta | grep -v rc | awk -F\" '{print $2}' | awk -F- '{print $2}' | awk -F.tar '{print $1}' | sort -rk 1 | head -n 1)
+
     echo "Start building docker image..."
-    # 修改 Dockerfile 中的 postgresql 版本
-    sed -i "s|FROM alpine:.*|FROM ${IMAGE_NAME}|g" ${WORK_HOME}/Dockerfile
+    # 修改 Dockerfile 中的版本信息
+    if [ -z "${ALPINE_VERSION}" ]; then ALPINE_VERSION=latest-stable; fi
+
+    case ${ALPINE_VERSION} in
+        latest-stable)
+            sed -i "s|FROM alpine:.*|FROM alpine:${ALPINE_VERSION%-*}|g" ${WORK_HOME}/Dockerfile
+        ;;
+        *)
+            sed -i "s|FROM alpine:.*|FROM alpine:${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
+        ;;
+    esac
+
+    sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG POSTGRES_VERSION=.*|ARG POSTGRES_VERSION=${POSTGRES_VERSION}|g" ${WORK_HOME}/Dockerfile
-    # 创建 postgresql 镜像
-    docker build -t skygangsta/postgres:${POSTGRES_VERSION}-alpine $WORK_HOME
+    sed -i "s|ARG CITUS_VERSION=.*|ARG CITUS_VERSION=${CITUS_VERSION}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG HLL_VERSION=.*|ARG HLL_VERSION=${HLL_VERSION}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG POSTGIS_VERSION=.*|ARG POSTGIS_VERSION=${POSTGIS_VERSION}|g" ${WORK_HOME}/Dockerfile
+    # 创建 Postgres 镜像
+    docker build -t skygangsta/postgres:${POSTGRES_VERSION} $WORK_HOME
     
     echo "Finished."
 }
 
-function func_chown() {
-    chown -R $1:$2 ${WORK_HOME}
-}
-
 case "$1" in
     image)
-        # 创建 redis docker 构建容器
-        func_docker_env
-
-        if [ "${2:-default}" != "nb" ]; then
-            docker exec -it build_postgres_on_${IMAGE_NAME/:/_} /data/builder build || exit 1
-        fi
-
-        docker exec -it build_postgres_on_${IMAGE_NAME/:/_} /data/builder clean || exit 1
-        docker exec -it build_postgres_on_${IMAGE_NAME/:/_} /data/builder chown $(id -u) $(id -g) || exit 1
-        
         func_build_docker_images
 
         exit 0
-    ;;
-    build)
-        func_check_source_file || exit $?
-        func_install || exit $?
-        func_install_contrib || exit $?
-        func_install_citus || exit $?
-        func_install_hll || exit $?
-        func_install_postgis || exit $?
-
-        exit 0
-    ;;
-    sources)
-        add_apk_source $@
-
-        exit 0
-    ;;
-    clean)
-        func_get_extensions_version
-        func_clean
-    ;;
-    chown)
-        func_chown $2 $3
     ;;
     help)
         func_help

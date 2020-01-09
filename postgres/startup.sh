@@ -8,11 +8,6 @@
 WORK_HOME=$(cd $(dirname ${0}) && pwd)
 BASE_NAME=$(basename ${0})
 
-# 探测cpu核心数
-if [ -f /proc/cpuinfo ]; then
-    j="-j$(grep 'model name' /proc/cpuinfo | wc -l || 1)"
-fi
-
 KERNEL_VERSION=`uname -r`
 KERNEL_VERSION_MAJOR=`printf ${KERNEL_VERSION:-0.0.0} | awk -F '.' '{print $1 ? $1 : 0}'`
 KERNEL_VERSION_MINOR=`printf ${KERNEL_VERSION:-0.0.0} | awk -F '.' '{print $2 ? $2 : 0}'`
