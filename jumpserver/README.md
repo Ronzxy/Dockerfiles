@@ -29,17 +29,17 @@ ${CONTAINER_ENGINE} run --name jumpserver-core \
     -e BOOTSTRAP_TOKEN=lTfjwIKagqSyx5NK \
     -e DB_ENGINE=postgresql \
     -e DB_HOST=172.17.0.1 \
-    -e DB_PORT=54321 \
+    -e DB_PORT=5432 \
     -e DB_NAME=jumpserver \
     -e DB_USER=jumpserver \
-    -e DB_PASSWORD=Abc123 \
+    -e DB_PASSWORD=Abc@123 \
     -e REDIS_HOST=172.17.0.1 \
     -e REDIS_PORT=6379 \
     -e REDIS_PASSWORD= \
     --cpu-shares=512 --memory=4G --memory-swap=0 \
     --restart=always \
     --oom-kill-disable \
-    -it -d jumpserver:1.5.2
+    -it -d skygangsta/jumpserver:1.5.6
 
 ```
 

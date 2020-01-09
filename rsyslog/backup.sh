@@ -1,13 +1,14 @@
 #!/bin/bash
 #
-# 作者 张超仁<zhangchaoren@outlook.com>
-# 版本 19.08.17.1
+#  Author: Sky<skygangsta@hotmail.com>
+# Version: 19.08.17.1
 #
-# 备份 tdshome 日志并传送到远程备份服务器
+# Backup syslog log to local and remote server
 #
 #
 # # 每周日凌晨 5 点备份系统日志
 # 0 5 * * 0 /path/backup.sh > /dev/null 2>&1
+
 WORK_HOME=$(cd $(dirname ${0}) && pwd)
 BASE_NAME=$(basename ${0})
 

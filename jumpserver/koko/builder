@@ -7,29 +7,8 @@
 WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 BASE_NAME=$(basename $BASH_SOURCE)
 
-JUMPSERVER_VERSION=1.5.2
-
-func_check_source_file() {
-    # 检查并安装 wget
-    dpkg -V wget || sh -c "apt update && apt install -y wget"
-
-    if [ ! -d "${WORK_HOME}/src" ]; then
-        mkdir -p "${WORK_HOME}/src"
-    fi
-
-    if [ ! -s ${WORK_HOME}/src/koko-${JUMPSERVER_VERSION}.tar.gz ]; then
-        wget https://github.com/jumpserver/koko/archive/${JUMPSERVER_VERSION}.tar.gz \
-            -O ${WORK_HOME}/src/koko-${JUMPSERVER_VERSION}.tar.gz
-        
-        if [ $? -ne 0 ]; then
-            rm -rf ${WORK_HOME}/src/koko-${JUMPSERVER_VERSION}.tar.gz
-            exit $?
-        fi
-    fi
-}
-
-func_check_source_file
+JUMPSERVER_VERSION=1.5.6
 
 docker pull jumpserver/jms_koko:${JUMPSERVER_VERSION}
-docker tag jumpserver/jms_koko:${JUMPSERVER_VERSION} jumpserver-koko:${JUMPSERVER_VERSION}
+docker tag jumpserver/jms_koko:${JUMPSERVER_VERSION} skygangsta/jumpserver-koko:${JUMPSERVER_VERSION}
 docker rmi jumpserver/jms_koko:${JUMPSERVER_VERSION}

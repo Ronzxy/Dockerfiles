@@ -16,6 +16,7 @@ podman pod create --name jumpserver \
 ### Create postgres container
 
 ```sh
+
 mkdir -p /home/storage/run/docker/jumpserver/postgres
 podman run --pod jumpserver --name jumpserver-postgres \
     -h postgres \
@@ -24,9 +25,9 @@ podman run --pod jumpserver --name jumpserver-postgres \
     --cpu-shares=1024 --memory=8G --memory-swap=0 \
     --restart=always \
     --oom-kill-disable \
-    -it -d postgres:11.5-alpine
+    -it -d postgres:12.1
 
-podman exec -it jumpserver_postgres psql -U postgres -c "
+podman exec -it jumpserver-postgres psql -U postgres -c "
 CREATE USER jumpserver WITH
 	LOGIN
 	NOSUPERUSER
@@ -37,7 +38,7 @@ CREATE USER jumpserver WITH
 	CONNECTION LIMIT -1
 	PASSWORD 'Abc123';
 "
-podman exec -it jumpserver_postgres psql -U postgres -c "
+podman exec -it jumpserver-postgres psql -U postgres -c "
 CREATE DATABASE jumpserver
     WITH 
     OWNER = jumpserver
@@ -60,7 +61,7 @@ podman run --pod jumpserver --name jumpserver-redis \
     --cpu-shares=512 --memory=8G --memory-swap=0 \
     --restart=always \
     --oom-kill-disable \
-    -t -i -d redis:5.0.5
+    -t -i -d redis:5.0.7
 
 ```
 
@@ -104,9 +105,8 @@ podman run --pod jumpserver --name jumpserver-core \
     -e REDIS_PORT=6379 \
     -e REDIS_PASSWORD= \
     --cpu-shares=512 --memory=4G --memory-swap=0 \
-    --restart=always \
     --oom-kill-disable \
-    -it -d jumpserver:1.5.2
+    -it -d skygangsta/jumpserver-core:1.5.6
 
 ```
 
@@ -125,7 +125,7 @@ podman run --pod jumpserver --name jumpserver-koko \
     --cpu-shares=512 --memory=4G --memory-swap=0 \
     --restart=always \
     --oom-kill-disable \
-    -it -d jumpserver-koko:1.5.2
+    -it -d skygangsta/jumpserver-koko:1.5.6
 
 podman run --pod jumpserver --name jumpserver-guacamole \
     -h guacamole-server \
@@ -135,7 +135,7 @@ podman run --pod jumpserver --name jumpserver-guacamole \
     --cpu-shares=512 --memory=4G --memory-swap=0 \
     --restart=always \
     --oom-kill-disable \
-    -it -d jumpserver-guacamole:1.5.2
+    -it -d skygangsta/jumpserver-guacamole:1.5.6
 
 ```
 

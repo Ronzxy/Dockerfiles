@@ -7,45 +7,12 @@
 WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 BASE_NAME=$(basename $BASH_SOURCE)
 
-JUMPSERVER_VERSION=1.5.2
-LUNA_VERSION=1.5.2
+JUMPSERVER_VERSION=1.5.6
+# Jumpserver 需要 Python 3.6
+ALPINE_VERSION=3.9
 
 RANDOM_SECRET_KEY=`cat /dev/urandom | tr -dc A-Za-z0-9 | head -c 50`
 RANDOM_BOOTSTRAP_TOKEN=`cat /dev/urandom | tr -dc A-Za-z0-9 | head -c 16`
-
-# 探测cpu核心数
-if [ -f /proc/cpuinfo ]; then
-    j="-j$(grep 'model name' /proc/cpuinfo | wc -l || 1)"
-fi
-
-func_check_source_file() {
-    # 检查并安装 wget
-    dpkg -V wget || sh -c "apt update && apt install -y wget"
-
-    if [ ! -d "${WORK_HOME}/src" ]; then
-        mkdir -p "${WORK_HOME}/src"
-    fi
-
-    if [ ! -s ${WORK_HOME}/src/jumpserver-${JUMPSERVER_VERSION}.tar.gz ]; then
-        wget https://github.com/jumpserver/jumpserver/archive/${JUMPSERVER_VERSION}.tar.gz \
-            -O ${WORK_HOME}/src/jumpserver-${JUMPSERVER_VERSION}.tar.gz
-
-        if [ $? -ne 0 ]; then
-            rm -rf ${WORK_HOME}/src/jumpserver-${JUMPSERVER_VERSION}.tar.gz
-            exit $?
-        fi
-    fi
-
-    if [ ! -f ${WORK_HOME}/src/luna-${LUNA_VERSION}.tar.gz ]; then
-        wget https://github.com/jumpserver/luna/releases/download/${LUNA_VERSION}/luna.tar.gz \
-            -O ${WORK_HOME}/src/luna-${LUNA_VERSION}.tar.gz
-        
-        if [ $? -ne 0 ]; then
-            rm -rf ${WORK_HOME}/src/luna-${LUNA_VERSION}.tar.gz
-            exit $?
-        fi
-    fi
-}
 
 function func_help() {
     echo "
@@ -53,27 +20,36 @@ function func_help() {
     ${BASE_NAME} [命令]
 
 支持的命令:
-    images      创建 docker images
+    image       创建 docker images
     help        展示 ${BASE_NAME} 脚本的帮助信息
 "
 }
 
 function func_build_docker_images() {
-   echo "Start building docker image..."
-    # 修改 Dockerfile 中的变量
-    # sed -i "s|ENV SECRET_KEY=.*|ENV SECRET_KEY=${RANDOM_SECRET_KEY}|g" ${WORK_HOME}/Dockerfile
-    # sed -i "s|ENV BOOTSTRAP_TOKEN=.*|ENV BOOTSTRAP_TOKEN=${RANDOM_BOOTSTRAP_TOKEN}|g" ${WORK_HOME}/Dockerfile
+    echo "Start building docker image..."
+    # 修改 Dockerfile 中的版本信息
+    if [ -z "${ALPINE_VERSION}" ]; then ALPINE_VERSION=3.9; fi
+
+    case ${ALPINE_VERSION} in
+        latest-stable)
+            sed -i "s|FROM alpine:.*|FROM alpine:${ALPINE_VERSION%-*}|g" ${WORK_HOME}/Dockerfile
+        ;;
+        *)
+            sed -i "s|FROM alpine:.*|FROM alpine:${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
+        ;;
+    esac
+
+    sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG JUMPSERVER_VERSION=.*|ARG JUMPSERVER_VERSION=${JUMPSERVER_VERSION}|g" ${WORK_HOME}/Dockerfile
 
     # 创建 postgresql 镜像
-    docker build -t jumpserver:${JUMPSERVER_VERSION} $WORK_HOME
+    docker build -t skygangsta/jumpserver-core:${JUMPSERVER_VERSION} $WORK_HOME
     
     echo "Finished."
 }
 
 case "$1" in
     image)
-        func_check_source_file
         func_build_docker_images
 
         exit 0
