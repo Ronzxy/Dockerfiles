@@ -1,0 +1,78 @@
+#!/bin/bash
+#
+# 作者：Skygangsta<skygangsta@hotmail.com>
+#
+# Postgres 编译脚本，仅支持 Alpine Linux 系统
+
+WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+BASE_NAME=$(basename $BASH_SOURCE)
+
+# ENABLE_OPENJDK=false
+# JAVA_VERSION=8u231
+# JAVA_VERSION_MAJOR=`printf $JAVA_VERSION | awk -F '.' '{print $1}'`
+# JAVA_VERSION_MINOR=`printf $JAVA_VERSION | awk -F '.' '{print $2}'`
+FILEBEAT_VERSION=7.5.1
+FILEBEAT_VERSION_MAJOR=`printf $FILEBEAT_VERSION | awk -F '.' '{print $1}'`
+FILEBEAT_VERSION_MINOR=`printf $FILEBEAT_VERSION | awk -F '.' '{print $2}'`
+IMAGE_NAME=alpine:edge
+
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+
+function func_help() {
+    echo "
+Usage:
+    ${BASE_NAME} [Command]
+
+Commands:
+    image       - Build a docker image
+    help        - Show this information
+"
+}
+
+function check_jdk_docker_image() {
+    echo "Checking nginx docker image..."
+    docker images | grep skygangsta/jdk | grep ${JAVA_VERSION} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "nginx:${NGINX_VERSION} docker image not found, create it..."
+        # 依赖镜像未创建
+        if [ ! -f ${WORK_HOME}/../jdk/builder ]; then
+            echo "jdk builder not found"
+            exit 1
+        fi
+        sed -i "s/^JAVA_VERSION=.*$/JAVA_VERSION=${JAVA_VERSION}/g" ${WORK_HOME}/../jdk/builder
+        chmod 755 ${WORK_HOME}/../jdk/builder
+        bash ${WORK_HOME}/../jdk/builder image || exit 1
+    else
+        echo "Found ${IMAGE_NAME}"
+    fi
+    # 切换镜像版本
+    sed -i "s|^FROM skygangsta/jdk:.*$|FROM ${IMAGE_NAME}|g" ${WORK_HOME}/Dockerfile
+}
+
+function func_build_docker_images() {
+    echo "Start building docker image..."
+    # 修改 Dockerfile 中的 postgresql 版本
+    sed -i "s|FROM .*|FROM ${IMAGE_NAME}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG FILEBEAT_VERSION=.*|ARG FILEBEAT_VERSION=${FILEBEAT_VERSION}|g" ${WORK_HOME}/Dockerfile
+    # sed -i "s|ARG JAVA_VERSION=.*|ARG JAVA_VERSION=${JAVA_VERSION}|g" ${WORK_HOME}/Dockerfile
+    # 创建 postgresql 镜像
+    docker build -t skygangsta/filebeat:${FILEBEAT_VERSION} $WORK_HOME
+    
+    echo "Finished."
+}
+
+case "$1" in
+    image)
+        # check_jdk_docker_image
+        func_build_docker_images
+
+        exit 0
+    ;;
+    help)
+        func_help
+    ;;
+    *)
+        func_help
+        exit 1
+    ;;
+esac
