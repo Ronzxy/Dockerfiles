@@ -1,8 +1,7 @@
 # ELK
 
 ```sh
-### Elsearch
-echo "262144" > /proc/sys/vm/max_map_count
+### Elasticsearch
 
 docker run --name elasticsearch \
     -h elasticsearch \
