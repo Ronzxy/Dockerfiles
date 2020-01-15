@@ -1,0 +1,100 @@
+#!/bin/bash
+#
+# Author: sky<skygangsta@hotmail.com>
+#
+# Oracle jdk docker image build script
+
+WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+BASE_NAME=$(basename $BASH_SOURCE)
+
+JAVA_VERSION=8u231
+ALPINE_VERSION=latest-stable
+
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+
+JAVA_VERSION_MAJOR=`printf $JAVA_VERSION | awk -F '.' '{print $1}'`
+if [ ${JAVA_VERSION} = ${JAVA_VERSION_MAJOR} ]; then
+    JAVA_VERSION_MAJOR=`printf $JAVA_VERSION | awk -F 'u' '{print $1}'`
+    JAVA_VERSION_MINOR=`printf $JAVA_VERSION | awk -F 'u' '{print $2}'`
+else
+    JAVA_VERSION_MINOR=`printf $JAVA_VERSION | awk -F '.' '{print $2}'`
+fi
+
+func_check_files() {
+
+    # 检查并安装 wget
+    if ! which wget 2>&1 > /dev/null; then
+        apk add wget ca-certificates
+    fi
+
+    echo -e "Checking jdk file..."
+
+    if [ ! -d "${WORK_HOME}/dist" ]; then
+        mkdir -p "${WORK_HOME}/dist"
+    fi
+
+    if [ ${JAVA_VERSION_MAJOR} -le 8 ]; then
+        # 小等于8版本
+        if [ ! -s ${WORK_HOME}/dist/jdk-${JAVA_VERSION}-linux-x64.tar.gz ]; then
+            echo "You must provide jdk-${JAVA_VERSION}-linux-x64.tar.gz in ${WORK_HOME}/dist"
+            exit 1
+        fi
+
+        JAVA_PACKAGE_SHA256=$(curl -sSL https://www.oracle.com/webfolder/s/digest/${JAVA_VERSION}checksum.html | grep -E "jdk-${JAVA_VERSION}-linux-x64\.tar\.gz" | grep -Eo '(sha256: )[^<]+' | cut -d: -f2 | xargs)
+        echo "${JAVA_PACKAGE_SHA256}  ${WORK_HOME}/dist/jdk-${JAVA_VERSION}-linux-x64.tar.gz" > /tmp/jdk-${JAVA_VERSION}-linux-x64.tar.gz.sha256
+        sha256sum -c /tmp/jdk-${JAVA_VERSION}-linux-x64.tar.gz.sha256 2>/dev/null || exit 1
+    fi
+
+    if [ ${JAVA_VERSION_MAJOR} -gt 8 ]; then
+        echo "Not implemented"
+        exit 1
+    fi
+}
+
+function func_help() {
+    echo "
+Usage:
+    ${BASE_NAME} [Command]
+
+Commands:
+    image       - Build a docker image
+    help        - Show this information
+"
+}
+
+function func_build_docker_images() {
+    echo "Start building docker image..."
+    
+
+    echo "Start building docker image..."
+    # 修改 Dockerfile 中的版本信息
+    if [ -z "${ALPINE_VERSION}" ]; then ALPINE_VERSION=latest-stable; fi
+    sed -i "s/^FROM alpine:.*$/FROM alpine:${ALPINE_VERSION%-*}/g" ${WORK_HOME}/Dockerfile
+    # 将第一个镜像命名
+    sed -i "0,/^FROM alpine:.*$/{s//FROM alpine:${ALPINE_VERSION%-*} as build-env/}" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG JAVA_VERSION=.*|ARG JAVA_VERSION=${JAVA_VERSION}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG JAVA_VERSION_MAJOR=.*|ARG JAVA_VERSION_MAJOR=${JAVA_VERSION_MAJOR}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG JAVA_VERSION_MINOR=.*|ARG JAVA_VERSION_MINOR=${JAVA_VERSION_MINOR}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG JAVA_VERSION_BUILD=.*|ARG JAVA_VERSION_BUILD=${JAVA_VERSION_BUILD}|g" ${WORK_HOME}/Dockerfile
+    # 创建 postgresql 镜像
+    docker build -t skygangsta/jdk:${JAVA_VERSION} $WORK_HOME
+    
+    echo "Finished."
+}
+
+case "$1" in
+    image)
+        func_check_files
+        func_build_docker_images
+
+        exit 0
+    ;;
+    help)
+        func_help
+    ;;
+    *)
+        func_help
+        exit 1
+    ;;
+esac
