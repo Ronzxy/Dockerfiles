@@ -22,3 +22,18 @@
 if ($remote_addr !~* ^(172)\.(16)\.(1)\.(11)$) {
     return 444;
 }
+
+### 通过 IP 地址限制访问
+Nginx 可以基于指定的客户端 IP 地址或地址段允许或拒绝访问。在 stream 上下文或 server 块中使用 allow 或 deny 指令可以允许或拒绝访问：
+
+stream {
+    ...
+    server {
+        listen 80;
+
+        deny   192.168.0.0/24;
+        allow  192.168.1.0/24;
+        allow  2001:0db8::/32;
+        deny   all;
+    }
+}
