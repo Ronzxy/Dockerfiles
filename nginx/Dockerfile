@@ -66,6 +66,12 @@ RUN set -ex; \
             ${WORK_HOME}/modsecurity-nginx; \
         wget https://github.com/SpiderLabs/owasp-modsecurity-crs/archive/v${OWASP_MODSEC_CRS_VERSION}.tar.gz \
             -O ${WORK_HOME}/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION}.tar.gz; \
+        git clone https://bitbucket.org/nginx-goodies/nginx-sticky-module-ng/src/${STICKY_VERSION}/ \
+            ${WORK_HOME}/nginx-sticky-module-${STICKY_VERSION}; \
+        wget https://github.com/itoffshore/nginx-upstream-fair/archive/master.tar.gz \
+            -O ${WORK_HOME}/nginx-upstream-fair-master.tar.gz; \
+        wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
+            -O ${WORK_HOME}/nginx-${NGINX_VERSION}.tar.gz; \
         cd ${WORK_HOME}/modsecurity; \
         git submodule init; \
         git submodule update; \
@@ -80,13 +86,13 @@ RUN set -ex; \
         # 不编译
         apk add --no-cache coreutils zlib pcre libssl1.1 libxslt \
             build-base git automake autoconf patch libtool pcre-dev zlib-dev openssl-dev libxslt-dev linux-headers; \
+        git clone https://bitbucket.org/nginx-goodies/nginx-sticky-module-ng/src/${STICKY_VERSION}/ \
+            ${WORK_HOME}/nginx-sticky-module-${STICKY_VERSION}; \
+        wget https://github.com/itoffshore/nginx-upstream-fair/archive/master.tar.gz \
+            -O ${WORK_HOME}/nginx-upstream-fair-master.tar.gz; \
+        wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
+            -O ${WORK_HOME}/nginx-${NGINX_VERSION}.tar.gz; \
     fi; \
-    git clone https://bitbucket.org/nginx-goodies/nginx-sticky-module-ng/src/${STICKY_VERSION}/ \
-        ${WORK_HOME}/nginx-sticky-module-${STICKY_VERSION}; \
-    wget https://github.com/itoffshore/nginx-upstream-fair/archive/master.tar.gz \
-        -O ${WORK_HOME}/nginx-upstream-fair-master.tar.gz; \
-    wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
-        -O ${WORK_HOME}/nginx-${NGINX_VERSION}.tar.gz; \
     tar xf ${WORK_HOME}/nginx-upstream-fair-master.tar.gz -C ${WORK_HOME};\
     tar xf ${WORK_HOME}/nginx-${NGINX_VERSION}.tar.gz -C ${WORK_HOME}; \
         cd ${WORK_HOME}/nginx-${NGINX_VERSION}; \
@@ -165,10 +171,16 @@ COPY startup.sh conf ./
 RUN set -ex; \
     chmod 755 startup.sh; \
     cp -af ./conf.d ./examples ./nginx.conf ${NGINX_CONF}; rm -rf ./conf.d ./examples ./nginx.conf; \
-    if [ ${ENABLE_MODSEC:-false} = true ]; then \
+    if [ ${ENABLE_MODSEC:-NO} = YES ]; then \
         sed -i "s|^prefix=.*$|prefix=/usr|g" /usr/lib/pkgconfig/modsecurity.pc; \
         sed -i "s|^# load_module.*/ngx_http_modsecurity_module.so;|load_module ${NGINX_MODS}/ngx_http_modsecurity_module.so;|g" ${NGINX_CONF}/nginx.conf; \
         sed -i "s|^SecRuleEngine.*|# &\\n\\nSecRuleEngine On|g" ${NGINX_CONF}/examples/modsec/modsecurity.conf; \
+        echo "#     modsecurity on;" >> ${NGINX_CONF}/examples/modsec/main.conf; \
+        echo "#     modsecurity_rules_file /usr/nginx/conf/conf.d/modsec/main.conf;" >> ${NGINX_CONF}/examples/modsec/main.conf; \
+        echo "" >> ${NGINX_CONF}/examples/modsec/main.conf; \
+        echo "Include /usr/nginx/conf/conf.d/modsec/modsecurity.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
+        echo "Include /usr/nginx/conf/owasp-modsecurity-crs/crs-setup.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
+        echo "Include /usr/nginx/conf/owasp-modsecurity-crs/rules/*.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
     fi; \
     cp -af ${NGINX_CONF} ${NGINX_CONF}.backup; \
     cp -af ${NGINX_HTML} ${NGINX_HTML}.backup; \
