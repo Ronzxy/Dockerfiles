@@ -24,8 +24,7 @@ ${CONTAINER_ENGINE} run --name postgres \
     -v postgres-data:/var/lib/postgres:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
     --cpu-shares=1024 --memory=16G --memory-swap=0 \
-    --restart=always \
-    --oom-kill-disable \
+    --restart=on-failure \
     -it -d skygangsta/postgres:12.1
 
 ```

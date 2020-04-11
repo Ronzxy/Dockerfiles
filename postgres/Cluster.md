@@ -7,37 +7,39 @@ Create PostgreSQL cluster with citus
 ```sh
 
 CONTAINER_ENGINE=docker
-CONTAINER_IMAGE=skygangsta/postgres:12.1
+CONTAINER_IMAGE=docker.ronzxy.com/postgres:12.2
 ${CONTAINER_ENGINE} run --name postgres-master \
     -h master.postgres.erayun.cn \
     -p 5432:5432 \
     -v postgres-data-master:/var/lib/postgres:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
+    -v /etc/timezone:/etc/timezone:ro,z \
+    -v /etc/localtime:/etc/localtime:ro,z \
     -e POSTGRES_PASSWORD=Abc@123 \
     -e SYNC_MODE=SYNC \
     -e NETWORK="172.17.0.0/24" \
     --cpu-shares=512 --memory=2G --memory-swap=-1 \
-    --restart=always \
-    --oom-kill-disable \
+    --restart=on-failure \
     --log-opt max-size=100m \
     --log-opt max-file=3 \
     -it -d ${CONTAINER_IMAGE}
 
-sleep 5
+sleep 15
 
 ${CONTAINER_ENGINE} run --name postgres-backup1 \
     -h backup1.postgres.erayun.cn \
     -p 5433:5432 \
     -v postgres-data-backup1:/var/lib/postgres:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
+    -v /etc/timezone:/etc/timezone:ro,z \
+    -v /etc/localtime:/etc/localtime:ro,z \
     -e PGTYPE="BACKUP" \
     -e PGMASTER_HOST="172.17.0.1" \
     -e PGMASTER_PORT=5432 \
     -e SYNC_MODE=SYNC \
     -e SYNC_NAME="pg_backup1" \
     --cpu-shares=256 --memory=256M --memory-swap=0 \
-    --restart=always \
-    --oom-kill-disable \
+    --restart=on-failure \
     --log-opt max-size=100m \
     --log-opt max-file=3 \
     -it -d ${CONTAINER_IMAGE}
@@ -47,14 +49,15 @@ ${CONTAINER_ENGINE} run --name postgres-backup2 \
     -p 5434:5432 \
     -v postgres-data-backup2:/var/lib/postgres:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
+    -v /etc/timezone:/etc/timezone:ro,z \
+    -v /etc/localtime:/etc/localtime:ro,z \
     -e PGTYPE="BACKUP" \
     -e PGMASTER_HOST="172.17.0.1" \
     -e PGMASTER_PORT=5432 \
     -e SYNC_MODE=SYNC \
     -e SYNC_NAME="pg_backup2" \
     --cpu-shares=256 --memory=256M --memory-swap=0 \
-    --restart=always \
-    --oom-kill-disable \
+    --restart=on-failure \
     --log-opt max-size=100m \
     --log-opt max-file=3 \
     -it -d ${CONTAINER_IMAGE}
@@ -67,10 +70,11 @@ ${CONTAINER_ENGINE} run --name postgres-worker01 \
     -p 54321:5432 \
     -v postgres-data-worker01:/var/lib/postgres:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
+    -v /etc/timezone:/etc/timezone:ro,z \
+    -v /etc/localtime:/etc/localtime:ro,z \
     -e NETWORK="172.17.0.0/24" \
     --cpu-shares=512 --memory=512M --memory-swap=0 \
-    --restart=always \
-    --oom-kill-disable \
+    --restart=on-failure \
     --log-opt max-size=100m \
     --log-opt max-file=3 \
     -it -d ${CONTAINER_IMAGE}
@@ -80,10 +84,11 @@ ${CONTAINER_ENGINE} run --name postgres-worker02 \
     -p 54322:5432 \
     -v postgres-data-worker02:/var/lib/postgres:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
+    -v /etc/timezone:/etc/timezone:ro,z \
+    -v /etc/localtime:/etc/localtime:ro,z \
     -e NETWORK="172.17.0.0/24" \
     --cpu-shares=512 --memory=512M --memory-swap=0 \
-    --restart=always \
-    --oom-kill-disable \
+    --restart=on-failure \
     --log-opt max-size=100m \
     --log-opt max-file=3 \
     -it -d ${CONTAINER_IMAGE}
@@ -93,10 +98,11 @@ ${CONTAINER_ENGINE} run --name postgres-worker03 \
     -p 54323:5432 \
     -v postgres-data-worker03:/var/lib/postgres:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
+    -v /etc/timezone:/etc/timezone:ro,z \
+    -v /etc/localtime:/etc/localtime:ro,z \
     -e NETWORK="172.17.0.0/24" \
     --cpu-shares=512 --memory=512M --memory-swap=0 \
-    --restart=always \
-    --oom-kill-disable \
+    --restart=on-failure \
     --log-opt max-size=100m \
     --log-opt max-file=3 \
     -it -d ${CONTAINER_IMAGE}
@@ -106,10 +112,11 @@ ${CONTAINER_ENGINE} run --name postgres-worker04 \
     -p 54324:5432 \
     -v postgres-data-worker04:/var/lib/postgres:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
+    -v /etc/timezone:/etc/timezone:ro,z \
+    -v /etc/localtime:/etc/localtime:ro,z \
     -e NETWORK="172.17.0.0/24" \
     --cpu-shares=512 --memory=512M --memory-swap=0 \
-    --restart=always \
-    --oom-kill-disable \
+    --restart=on-failure \
     --log-opt max-size=100m \
     --log-opt max-file=3 \
     -it -d ${CONTAINER_IMAGE}
@@ -119,10 +126,11 @@ ${CONTAINER_ENGINE} run --name postgres-worker05 \
     -p 54325:5432 \
     -v postgres-data-worker05:/var/lib/postgres:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
+    -v /etc/timezone:/etc/timezone:ro,z \
+    -v /etc/localtime:/etc/localtime:ro,z \
     -e NETWORK="172.17.0.0/24" \
     --cpu-shares=512 --memory=512M --memory-swap=0 \
-    --restart=always \
-    --oom-kill-disable \
+    --restart=on-failure \
     --log-opt max-size=100m \
     --log-opt max-file=3 \
     -it -d ${CONTAINER_IMAGE}
@@ -166,23 +174,23 @@ done
 
 
 NODE=postgres-master
+if [ "${NODE}" = "postgres-master" ]; then
+    ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * from master_add_node('172.17.0.1', 54321);"
+    ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * from master_add_node('172.17.0.1', 54322);"
+    ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * from master_add_node('172.17.0.1', 54323);"
+    ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * from master_add_node('172.17.0.1', 54324);"
+    ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * from master_add_node('172.17.0.1', 54325);"
 
-${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * from master_add_node('172.17.0.1', 54321);"
-${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * from master_add_node('172.17.0.1', 54322);"
-${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * from master_add_node('172.17.0.1', 54323);"
-${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * from master_add_node('172.17.0.1', 54324);"
-${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * from master_add_node('172.17.0.1', 54325);"
 
+    ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * FROM master_get_active_worker_nodes();"
 
-${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SELECT * FROM master_get_active_worker_nodes();"
-
-# 设置表分片数
-${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SET citus.shard_count = 64;"
-# 设置表分片的副本数量
-${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SET citus.shard_replication_factor = 2;"
-# 设置Citus在使用postgresql-hll扩展计算count（distinct）时所需的错误率
-${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SET citus.count_distinct_error_rate = 0.005;"
-
+    # 设置表分片数
+    ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SET citus.shard_count = 64;"
+    # 设置表分片的副本数量
+    ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SET citus.shard_replication_factor = 2;"
+    # 设置Citus在使用postgresql-hll扩展计算count（distinct）时所需的错误率
+    ${CONTAINER_ENGINE} exec -it ${NODE} psql -U postgres -d citusdb -c "SET citus.count_distinct_error_rate = 0.005;"
+fi
 
 
 # postgres-master postgres-worker01 postgres-worker02 postgres-worker03 postgres-worker04 postgres-worker05 postgres-backup1 postgres-backup2

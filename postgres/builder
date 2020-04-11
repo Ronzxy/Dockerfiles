@@ -7,10 +7,11 @@
 WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 BASE_NAME=$(basename $BASH_SOURCE)
 
-POSTGRES_VERSION=12.1
+POSTGRES_VERSION=12.2
 POSTGRES_VERSION_MAJOR=`printf $POSTGRES_VERSION | awk -F '.' '{print $1}'`
 POSTGRES_VERSION_MINOR=`printf $POSTGRES_VERSION | awk -F '.' '{print $2}'`
 ALPINE_VERSION=latest-stable
+ENABLE_POSTGIS=NO
 
 export PATH=${INSTALL_PREFIX}/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 
@@ -29,30 +30,46 @@ Commands:
 
 function func_build_docker_images() {
     echo "Getting the latest version of the extensions..."
-    CITUS_VERSION=$(wget -qO - "https://api.github.com/repos/citusdata/citus/releases/latest" | grep '"tag_name": ".*' | awk -F: '{print $2}' | awk -F '"' '{print $2}' | awk -Fv '{print $2}')
-    HLL_VERSION=$(wget -qO - "https://api.github.com/repos/citusdata/postgresql-hll/releases/latest" | grep '"tag_name": ".*' | awk -F: '{print $2}' | awk -F '"' '{print $2}' | awk -Fv '{print $2}')
-    POSTGIS_VERSION=$(wget -qO - http://download.osgeo.org/postgis/source/ | grep -o title=\"postgis-.*.tar.gz\" | grep -v alpha | grep -v beta | grep -v rc | awk -F\" '{print $2}' | awk -F- '{print $2}' | awk -F.tar '{print $1}' | sort -rk 1 | head -n 1)
+    CITUS_VERSION=$(wget -qO - --timeout=60 "https://api.github.com/repos/citusdata/citus/releases/latest" | grep '"tag_name": ".*' | awk -F: '{print $2}' | awk -F '"' '{print $2}' | awk -Fv '{print $2}')
+    HLL_VERSION=$(wget -qO - --timeout=60 "https://api.github.com/repos/citusdata/postgresql-hll/releases/latest" | grep '"tag_name": ".*' | awk -F: '{print $2}' | awk -F '"' '{print $2}' | awk -Fv '{print $2}')
+    POSTGIS_VERSION=$(wget -qO - --timeout=60 "http://download.osgeo.org/postgis/source/" | grep -o title=\"postgis-.*.tar.gz\" | grep -v alpha | grep -v beta | grep -v rc | awk -F\" '{print $2}' | awk -F- '{print $2}' | awk -F.tar '{print $1}' | sort -rk 1 | head -n 1)
+
+    if [ ! -z "${CITUS_VERSION}" ]; then
+        echo "Using latest citus version ${CITUS_VERSION}"
+    else
+        CITUS_VERSION=9.0.2
+        echo "Get latest citus version failed! Using default version ${CITUS_VERSION}"
+    fi
+
+    if [ ! -z "${HLL_VERSION}" ]; then
+        echo "Using latest hll version ${HLL_VERSION}"
+    else
+        HLL_VERSION=2.14
+        echo "Get latest hll version failed! Using default version ${HLL_VERSION}"
+    fi
+
+    if [ ! -z "${POSTGIS_VERSION}" ]; then
+        echo "Using latest postgis version ${POSTGIS_VERSION}"
+    else
+        POSTGIS_VERSION="3.0.1"
+        echo "Get latest pogtgis version failed ! Using default version ${POSTGIS_VERSION}"
+    fi
 
     echo "Start building docker image..."
+
     # 修改 Dockerfile 中的版本信息
     if [ -z "${ALPINE_VERSION}" ]; then ALPINE_VERSION=latest-stable; fi
 
-    case ${ALPINE_VERSION} in
-        latest-stable)
-            sed -i "s|FROM alpine:.*|FROM alpine:${ALPINE_VERSION%-*}|g" ${WORK_HOME}/Dockerfile
-        ;;
-        *)
-            sed -i "s|FROM alpine:.*|FROM alpine:${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
-        ;;
-    esac
-
+    sed -i "s/^FROM alpine:.*$/FROM alpine:${ALPINE_VERSION%-*}/g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG POSTGRES_VERSION=.*|ARG POSTGRES_VERSION=${POSTGRES_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG CITUS_VERSION=.*|ARG CITUS_VERSION=${CITUS_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG HLL_VERSION=.*|ARG HLL_VERSION=${HLL_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG POSTGIS_VERSION=.*|ARG POSTGIS_VERSION=${POSTGIS_VERSION}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG ENABLE_POSTGIS=.*|ARG ENABLE_POSTGIS=${ENABLE_POSTGIS}|g" ${WORK_HOME}/Dockerfile
+
     # 创建 Postgres 镜像
-    docker build -t skygangsta/postgres:${POSTGRES_VERSION} $WORK_HOME
+    docker build -t docker.ronzxy.com/postgres:${POSTGRES_VERSION} ${WORK_HOME}
     
     echo "Finished."
 }
