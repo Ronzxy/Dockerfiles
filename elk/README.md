@@ -13,7 +13,7 @@ docker run --name elasticsearch \
     -e DISCOVERY_TYPE=single-node \
     --cpu-shares=512 --memory=2G --memory-swap=8G \
     --restart=always \
-    -it -d skygangsta/elasticsearch:7.5.1
+    -it -d docker.ronzxy.com/elasticsearch:7.5.1
 
 
 ### Kibana
@@ -29,7 +29,7 @@ docker run --name kibana \
     -e ELASTICSEARCH_HOSTS=http://172.17.0.1:9200 \
     --cpu-shares=512 --memory=1G --memory-swap=4G \
     --restart=on-failure \
-    -it -d skygangsta/kibana:7.5.1
+    -it -d docker.ronzxy.com/kibana:7.5.1
 
 ### Logstash
 
@@ -43,7 +43,7 @@ docker run --name kibana \
 #     -e ELASTICSEARCH_HOSTS=http://172.17.0.1:9200 \
 #     --cpu-shares=512 --memory=1G --memory-swap=4G \
 #     --restart=on-failure \
-#     -it -d skygangsta/logstash:7.5.1
+#     -it -d docker.ronzxy.com/logstash:7.5.1
 
 ### Filebeat
 
@@ -63,6 +63,47 @@ docker run --name filebeat \
     -e OUTPUT_FIELDS="server: payment,ip: 172.31.178.143" \
     --cpu-shares=512 --memory=1G --memory-swap=4G \
     --restart=on-failure \
-    -it -d skygangsta/filebeat:7.5.1
+    -it -d docker.ronzxy.com/filebeat:7.5.1
 
+```
+
+## 常见问题解决
+
+###　创建定义策略
+
+```sh
+curl -X PUT "localhost:9200/_ilm/policy/datastream_policy" -H 'Content-Type: application/json' -d'
+{
+  "policy": {                       
+    "phases": {
+      "hot": {                      
+        "actions": {
+          "rollover": {             
+            "max_size": "50GB",
+            "max_age": "30d"，
+            "max_docs": ""
+          }
+        }
+      },
+      "delete": {
+        "min_age": "90d",           
+        "actions": {
+          "delete": {}              
+        }
+      }
+    }
+  }
+}
+'
+```
+
+其中rollover中配置归档策略，目前支持3中策略，分别是max_docs、max_size、max_age（请关注、具体后续内容介绍），
+其中的任何一个条件满足时都会触发索引的归档操作，并删除归档90天后的索引文件（其中delete属于phrase，这个也会在后面内容介绍）。
+
+```sh
+# Resolv : blocked by: [FORBIDDEN/12/index read-only / allow delete (api)];
+PUT /funpay-178-144-2020.01.07-000001/_settings
+{
+  "index.blocks.read_only_allow_delete": null
+}
 ```

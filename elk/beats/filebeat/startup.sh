@@ -49,7 +49,7 @@ if [ `echo ${SETUP_ILM_OVERWRITE} | tr 'A-Z' 'a-z'` = 'true' ]; then
         SETUP_ILM_POLICY_MIN_AGE=30d
     fi
 
-    sed -i "s/\"max_size\":.*/\"max_size\": \"${SETUP_ILM_POLICY_MAX_SIZE}\"/g" ${HOME}/config/policy/filebeat.json
+    sed -i "s/\"max_size\":.*/\"max_size\": \"${SETUP_ILM_POLICY_MAX_SIZE}\",/g" ${HOME}/config/policy/filebeat.json
     sed -i "s/\"min_age\":.*/\"min_age\": \"${SETUP_ILM_POLICY_MIN_AGE}\",/g" ${HOME}/config/policy/filebeat.json
 fi
 

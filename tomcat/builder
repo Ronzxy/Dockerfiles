@@ -7,13 +7,10 @@
 WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 BASE_NAME=$(basename $BASH_SOURCE)
 
-# ENABLE_OPENJDK=false
-# JAVA_VERSION=8u231
-# JAVA_VERSION_MAJOR=`printf $JAVA_VERSION | awk -F '.' '{print $1}'`
-# JAVA_VERSION_MINOR=`printf $JAVA_VERSION | awk -F '.' '{print $2}'`
-FILEBEAT_VERSION=7.5.1
-FILEBEAT_VERSION_MAJOR=`printf $FILEBEAT_VERSION | awk -F '.' '{print $1}'`
-FILEBEAT_VERSION_MINOR=`printf $FILEBEAT_VERSION | awk -F '.' '{print $2}'`
+JAVA_VERSION=8
+TOMCAT_VERSION=8.5.53
+TOMCAT_VERSION_MAJOR=`printf $TOMCAT_VERSION | awk -F '.' '{print $1}'`
+TOMCAT_VERSION_MINOR=`printf $TOMCAT_VERSION | awk -F '.' '{print $2}'`
 ALPINE_VERSION=latest-stable
 
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
@@ -31,15 +28,13 @@ Commands:
 
 function func_build_docker_images() {
     echo "Start building docker image..."
-    # 修改 Dockerfile 中的版本信息
-    if [ -z "${ALPINE_VERSION}" ]; then ALPINE_VERSION=latest-stable; fi
-
+     # 修改 Dockerfile 中的版本信息
     sed -i "s/^FROM alpine:.*$/FROM alpine:${ALPINE_VERSION%-*}/g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
-    sed -i "s|ARG FILEBEAT_VERSION=.*|ARG FILEBEAT_VERSION=${FILEBEAT_VERSION}|g" ${WORK_HOME}/Dockerfile
-
-    # 创建 Filebeat 镜像
-    docker build -t docker.ronzxy.com/filebeat:${FILEBEAT_VERSION} $WORK_HOME
+    sed -i "s|ARG TOMCAT_VERSION=.*|ARG TOMCAT_VERSION=${TOMCAT_VERSION}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG JAVA_VERSION=.*|ARG JAVA_VERSION=${JAVA_VERSION}|g" ${WORK_HOME}/Dockerfile
+    # 创建 postgresql 镜像
+    docker build -t docker.ronzxy.com/tomcat:${TOMCAT_VERSION}-with-jre${JAVA_VERSION} $WORK_HOME
     
     echo "Finished."
 }
