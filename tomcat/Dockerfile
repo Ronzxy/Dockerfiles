@@ -20,7 +20,7 @@ RUN set -ex; \
 ARG ZONE_NAME="Asia/Shanghai"
 ARG USER=tomcat
 ARG GROUP=tomcat
-ARG HOME=/var/lib/tomcat
+ARG HOME=/usr/tomcat
 
 RUN set -ex; \
     apk add --no-cache shadow tzdata; \

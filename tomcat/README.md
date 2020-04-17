@@ -1,6 +1,6 @@
 # Tomcat
 
-Build and create tomcat docker image from the jdk image.
+Build and create tomcat docker image from the openjdk.
 
 ### Build
 

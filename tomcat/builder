@@ -28,7 +28,9 @@ Commands:
 
 function func_build_docker_images() {
     echo "Start building docker image..."
-     # 修改 Dockerfile 中的版本信息
+    # 修改 Dockerfile 中的版本信息
+    if [ -z "${ALPINE_VERSION}" ]; then ALPINE_VERSION=latest-stable; fi
+
     sed -i "s/^FROM alpine:.*$/FROM alpine:${ALPINE_VERSION%-*}/g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG TOMCAT_VERSION=.*|ARG TOMCAT_VERSION=${TOMCAT_VERSION}|g" ${WORK_HOME}/Dockerfile
