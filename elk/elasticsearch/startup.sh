@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ "`ls -A ${HOME}/config`" = "" ]; then
     cp -af ${HOME}/config.default/* ${HOME}/config
@@ -14,4 +14,4 @@ if [ ! -z ${DISCOVERY_SEED_HOSTS} ]; then
         echo "discovery.seed_hosts: ${DISCOVERY_SEED_HOSTS}" >> config/elasticsearch.yml
 fi
 
-sh bin/elasticsearch
+bin/elasticsearch

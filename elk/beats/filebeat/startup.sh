@@ -1,8 +1,11 @@
 #!/bin/sh
 
-if [ "`ls -A ${HOME}/config`" = "" ]; then
-    cp -af ${HOME}/config.default/* ${HOME}/config
+
+if [ ! -d "${FILEBEAT_HOME}/config" ]; then
+    mkdir -p ${FILEBEAT_HOME}/config || exit $?
 fi
+
+find ${FILEBEAT_HOME}/config -maxdepth 0 -empty -exec cp -af ${FILEBEAT_HOME}/config.default/* {} \;
 
 if [ ! -z "${NODE_NAME}" ]; then
     sed -i "s|^name:.*$|name: ${NODE_NAME}|g" ${HOME}/config/filebeat.yml
@@ -73,12 +76,6 @@ if [ ! -z "${OUTPUT_FIELDS}" ]; then
             sed -i "/^fields:.*$/,/^[ ]*env:.*$/{s|^fields:.*$|&\\n  ${FIELD}|g}}" ${HOME}/config/filebeat.yml
     done
 fi
-
-# ${HOME}/filebeat -c ${HOME}/config/filebeat.yml setup -e \
-#     --path.home ${HOME} \
-#     --path.data ${HOME}/data \
-#     --path.logs ${HOME}/logs \
-#     --path.config ${HOME}/config
 
 ${HOME}/filebeat -c ${HOME}/config/filebeat.yml -e \
     --path.home ${HOME} \

@@ -13,7 +13,7 @@ docker run --name elasticsearch \
     -e DISCOVERY_TYPE=single-node \
     --cpu-shares=512 --memory=2G --memory-swap=8G \
     --restart=always \
-    -it -d docker.ronzxy.com/elasticsearch:7.5.1
+    -it -d docker.ronzxy.com/elasticsearch:7.6.2
 
 
 ### Kibana
@@ -29,7 +29,7 @@ docker run --name kibana \
     -e ELASTICSEARCH_HOSTS=http://172.17.0.1:9200 \
     --cpu-shares=512 --memory=1G --memory-swap=4G \
     --restart=on-failure \
-    -it -d docker.ronzxy.com/kibana:7.5.1
+    -it -d docker.ronzxy.com/kibana:7.6.2
 
 ### Logstash
 
@@ -43,7 +43,7 @@ docker run --name kibana \
 #     -e ELASTICSEARCH_HOSTS=http://172.17.0.1:9200 \
 #     --cpu-shares=512 --memory=1G --memory-swap=4G \
 #     --restart=on-failure \
-#     -it -d docker.ronzxy.com/logstash:7.5.1
+#     -it -d docker.ronzxy.com/logstash:7.6.2
 
 ### Filebeat
 
@@ -53,17 +53,17 @@ docker run --name filebeat \
     -v filebeat-logs:/var/log/filebeat:rw,z \
     -v filebeat-data:/var/lib/filebeat:rw,z \
     -v /mnt/data:/data:ro,z \
-    -e ELASTICSEARCH_HOSTS=http://172.31.178.148:9200 \
-    -e KIBANA_HOSTS=http://172.31.178.148:5601 \
+    -e ELASTICSEARCH_HOSTS=http://10.31.178.100:9200 \
+    -e KIBANA_HOSTS=http://10.31.178.100:5601 \
     -e NODE_NAME=payment \
     -e SETUP_ILM_OVERWRITE=true \
     -e SETUP_ILM_POLICY_MAX_SIZE=50GB \
     -e SETUP_ILM_ROLLOVER_ALIAS=payment-178-143 \
-    -e INPUT_FILE_PATTERN_LIST=/data/*/*/logs/* \
-    -e OUTPUT_FIELDS="server: payment,ip: 172.31.178.143" \
+    -e INPUT_FILE_PATTERN_LIST='/data/*/*/logs/*' \
+    -e OUTPUT_FIELDS="server: payment,ip: 10.31.178.144" \
     --cpu-shares=512 --memory=1G --memory-swap=4G \
     --restart=on-failure \
-    -it -d docker.ronzxy.com/filebeat:7.5.1
+    -it -d docker.ronzxy.com/filebeat:7.6.2
 
 ```
 

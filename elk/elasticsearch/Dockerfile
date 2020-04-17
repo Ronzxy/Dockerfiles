@@ -11,9 +11,9 @@ RUN set -ex; \
     echo "https://mirrors.ustc.edu.cn/alpine/${ALPINE_VERSION}/main" >> /etc/apk/repositories; \
     echo "https://mirrors.ustc.edu.cn/alpine/${ALPINE_VERSION}/community" >> /etc/apk/repositories; \
     if [ "${ALPINE_VERSION}" = "edge" ]; then echo "https://mirrors.ustc.edu.cn/alpine/${ALPINE_VERSION}/testing" >> /etc/apk/repositories; fi; \
-    echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/main" >> /etc/apk/repositories; \
-    echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/community" >> /etc/apk/repositories; \
-    if [ "${ALPINE_VERSION}" = "edge" ]; then echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/testing" >> /etc/apk/repositories; fi; \
+    # echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/main" >> /etc/apk/repositories; \
+    # echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/community" >> /etc/apk/repositories; \
+    # if [ "${ALPINE_VERSION}" = "edge" ]; then echo "http://dl-cdn.alpinelinux.org/alpine/${ALPINE_VERSION}/testing" >> /etc/apk/repositories; fi; \
     apk upgrade --no-cache; \
     rm -rf /var/cache/apk/*
 
@@ -46,8 +46,6 @@ ARG GROUP=elasticsearch
 ARG HOME=/usr/elasticsearch
 
 RUN set -ex; \
-    echo http://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories; \
-    apk upgrade --no-cache; \
     apk add --no-cache shadow tzdata; \
     # 初始化时区
     cp /usr/share/zoneinfo/${ZONE_NAME} /etc/localtime && echo "Asia/Shanghai" > /etc/timezone; \
@@ -55,19 +53,17 @@ RUN set -ex; \
     cat /etc/group | grep :999: | awk -F ':' '{print "groupmod -g 1999 "$1}' | sh; \
     cat /etc/passwd | grep :999: | awk -F ':' '{print "usermod -u 1999 "$1}' | sh; \
     cat /etc/group | grep ${GROUP}: | awk -F ':' '{print "groupmod -g 999 "$1}' | sh; \
-    cat /etc/passwd | grep ${USER}: | awk -F ':' '{print "usermod -u 999 "$1}' | sh; \
+    cat /etc/passwd | grep ${USER}: | awk -F ':' '{print "usermod -u 999 -m -d ${HOME} "$1}' | sh; \
     cat /etc/group | grep ${GROUP}: || sh -c "groupadd -r -g 999 ${GROUP}"; \
     cat /etc/passwd | grep ${USER}: || sh -c "useradd -r -u 999 -g ${GROUP} ${USER} -m -d ${HOME} -s /bin/sh"; \
     HOME=$(cat /etc/passwd | grep ${USER} | awk -F ':' '{print $6}'); \
     if [ ! -d ${HOME} ]; then mkdir -p ${HOME}; chown ${USER}:${GROUP} ${HOME}; fi; \
     apk del --no-cache --purge shadow; \
-    rm -rf /var/cache/apk/*
+    rm -rf /tmp/* /var/cache/apk/*
 
-ARG ELASTICSEARCH_VERSION=7.5.1
+ARG ELASTICSEARCH_VERSION=7.6.2
 
 WORKDIR ${HOME}
-
-USER ${USER}
 
 RUN set -ex; \
     ELASTICSEARCH_VERSION_MAJOR=`printf ${ELASTICSEARCH_VERSION} | awk -F '.' '{print $1}'`; \
@@ -75,9 +71,8 @@ RUN set -ex; \
     ELASTICSEARCH_VERSION_BUILD=`printf ${ELASTICSEARCH_VERSION} | awk -F '.' '{print $3}'`; \
     wget "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ELASTICSEARCH_VERSION}-linux-x86_64.tar.gz" \
         -O elasticsearch-${ELASTICSEARCH_VERSION}-linux-x86_64.tar.gz; \
-    su - ${USER} -c "tar xf elasticsearch-${ELASTICSEARCH_VERSION}-linux-x86_64.tar.gz --strip-components=1 -C ${HOME}; \
-        mkdir -p ${HOME}/data"; \
-    apk add --no-cache openjdk11-jre; \
+    apk add --no-cache openjdk11-jre bash coreutils; \
+    su - ${USER} -c "tar xf elasticsearch-${ELASTICSEARCH_VERSION}-linux-x86_64.tar.gz --strip-components=1 -C ${HOME}"; \
     rm -rf jdk elasticsearch-${ELASTICSEARCH_VERSION}-linux-x86_64.tar.gz; \
     rm -rf /tmp/* /var/cache/apk/* 
 
@@ -95,9 +90,8 @@ RUN set -ex; \
     echo "cluster.name: ${CLUSTER_NAME}" >> config/elasticsearch.yml; \
     echo "network.host: 0.0.0.0" >> config/elasticsearch.yml; \
     echo "path.data: ${HOME}/data" >> config/elasticsearch.yml; \
-    cp -af config config.default
-
-USER root
+    cp -af config config.default; mkdir -p data; \
+    chown -R ${USER}:${GROUP} config config.default data
 
 COPY startup.sh ./
 
