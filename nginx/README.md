@@ -15,9 +15,9 @@ chmod 755 builder
 
 ```sh
 
-CONTAINER_NAME=nginx-waf
+CONTAINER_NAME=nginx
 IMAGE_NAME=docker.ronzxy.com/nginx:1.16.1-with-modsecurity
-mkdir -p /home/storage/run/docker/${CONTAINER_NAME}/{conf,html,cert,logs}
+# mkdir -p /home/storage/run/docker/${CONTAINER_NAME}/{conf,html,cert,logs}
 
 CONTAINER_ENGINE=docker
 ${CONTAINER_ENGINE} run --name ${CONTAINER_NAME} \
@@ -40,13 +40,13 @@ ${CONTAINER_ENGINE} run --name ${CONTAINER_NAME} \
 # 2
 CONTAINER_NAME=nginx
 IMAGE_NAME=docker.ronzxy.com/nginx:1.16.1
-mkdir -p /home/storage/run/docker/${CONTAINER_NAME}/{conf,html,cert,logs}
+# mkdir -p /home/storage/run/docker/${CONTAINER_NAME}/{conf,html,cert,logs}
 
 CONTAINER_ENGINE=docker
 ${CONTAINER_ENGINE} run --name ${CONTAINER_NAME} \
 -h nginx \
--p 8080:80 \
--p 4430:443 \
+-p 80:80 \
+-p 443:443 \
 -v ${CONTAINER_NAME}-conf:/usr/nginx/conf:rw,z \
 -v ${CONTAINER_NAME}-html:/usr/nginx/html:rw,z \
 -v ${CONTAINER_NAME}-cert:/usr/nginx/cert:rw,z \
