@@ -47,6 +47,8 @@ Commands:
     start       - Start nginx service
     daemon      - Start nginx service in background
     reload      - Reload nginx configuration
+    test        - Test configuration
+    teload      - Reload after successful test configuration
     reopen      - Reopen log files
     stop        - Stop nginx immediate
     quit        - Quit nginx until all connection close
@@ -159,6 +161,12 @@ case "$1" in
     ;;
     test)
         func_nginx_test
+    ;;
+    teload)
+        func_nginx_test
+        if [ $? -eq 0 ]; then
+            func_nginx_reload
+        fi
     ;;
     help)
         func_help

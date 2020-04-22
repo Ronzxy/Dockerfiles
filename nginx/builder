@@ -14,8 +14,6 @@ NGINX_VERSION=1.16.1
 NGINX_VERSION_MAJOR=`printf $NGINX_VERSION | awk -F '.' '{print $1}'`
 NGINX_VERSION_MINOR=`printf $NGINX_VERSION | awk -F '.' '{print $2}'`
 STICKY_VERSION=1.2.6
-# YES or NO
-ENABLE_MODSEC=NO
 MODSEC_BRANCH=v3/master
 MODSEC_INSTALL_PATH=${WORK_HOME}/dist/modsecurity
 OWASP_MODSEC_CRS_VERSION=3.2.0
@@ -45,7 +43,7 @@ function func_build_docker_images() {
     sed -i "s|ARG OWASP_MODSEC_CRS_VERSION=.*|ARG OWASP_MODSEC_CRS_VERSION=${OWASP_MODSEC_CRS_VERSION}|g" ${WORK_HOME}/Dockerfile
 
     # 创建 nginx 镜像
-    if [ ${ENABLE_MODSEC:-NO} = YES ]; then
+    if [ "`echo $1 | tr a-z A-Z`" = "ENABLE-MODSEC" ]; then
         sed -i "s|ARG ENABLE_MODSEC=.*|ARG ENABLE_MODSEC=YES|g" ${WORK_HOME}/Dockerfile
         docker build -t docker.ronzxy.com/nginx:${NGINX_VERSION}-with-modsecurity $WORK_HOME
     else
@@ -58,7 +56,7 @@ function func_build_docker_images() {
 
 case "$1" in
     image)
-        func_build_docker_images
+        func_build_docker_images $2
     ;;
     help)
         func_help

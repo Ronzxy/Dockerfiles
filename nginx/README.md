@@ -38,6 +38,7 @@ ${CONTAINER_ENGINE} run --name ${CONTAINER_NAME} \
 
 
 # 2
+CONTAINER_ENGINE=docker
 CONTAINER_NAME=nginx
 IMAGE_NAME=docker.ronzxy.com/nginx:1.16.1
 # mkdir -p /home/storage/run/docker/${CONTAINER_NAME}/{conf,html,cert,logs}

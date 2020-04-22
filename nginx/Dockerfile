@@ -83,7 +83,7 @@ RUN set -ex; \
         make install; \
         DYNAMIC_MODULE_ADDON="--add-dynamic-module=${WORK_HOME}/modsecurity-nginx"; \
     else \
-        # 不编译
+        # 不开启 ModSecurity
         apk add --no-cache coreutils zlib pcre libssl1.1 libxslt \
             build-base git automake autoconf patch libtool pcre-dev zlib-dev openssl-dev libxslt-dev linux-headers; \
         git clone https://bitbucket.org/nginx-goodies/nginx-sticky-module-ng/src/${STICKY_VERSION}/ \
@@ -170,8 +170,9 @@ COPY startup.sh conf ./
 
 RUN set -ex; \
     chmod 755 startup.sh; \
+    ln -s ${WORKDIR}/startup.sh /usr/bin/startup.sh; \
     cp -af ./conf.d ./examples ./nginx.conf ${NGINX_CONF}; rm -rf ./conf.d ./examples ./nginx.conf; \
-    if [ ${ENABLE_MODSEC:-NO} = YES ]; then \
+    if [ "${ENABLE_MODSEC:-NO}" = "YES" ]; then \
         sed -i "s|^prefix=.*$|prefix=/usr|g" /usr/lib/pkgconfig/modsecurity.pc; \
         sed -i "s|^# load_module.*/ngx_http_modsecurity_module.so;|load_module ${NGINX_MODS}/ngx_http_modsecurity_module.so;|g" ${NGINX_CONF}/nginx.conf; \
         sed -i "s|^SecRuleEngine.*|# &\\n\\nSecRuleEngine On|g" ${NGINX_CONF}/examples/modsec/modsecurity.conf; \
@@ -179,8 +180,10 @@ RUN set -ex; \
         echo "#     modsecurity_rules_file /usr/nginx/conf/conf.d/modsec/main.conf;" >> ${NGINX_CONF}/examples/modsec/main.conf; \
         echo "" >> ${NGINX_CONF}/examples/modsec/main.conf; \
         echo "Include /usr/nginx/conf/conf.d/modsec/modsecurity.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
-        echo "Include /usr/nginx/conf/owasp-modsecurity-crs/crs-setup.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
-        echo "Include /usr/nginx/conf/owasp-modsecurity-crs/rules/*.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
+        echo "Include /usr/nginx/conf/conf.d/modsec/owasp-modsecurity-crs/crs-setup.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
+        echo "Include /usr/nginx/conf/conf.d/modsec/owasp-modsecurity-crs/rules/*.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
+        mv ${NGINX_CONF}/owasp-modsecurity-crs /usr/nginx/conf/examples/modsec; \
+        cp -af /usr/nginx/conf/examples/modsec /usr/nginx/conf/conf.d/modsec; \
     fi; \
     cp -af ${NGINX_CONF} ${NGINX_CONF}.backup; \
     cp -af ${NGINX_HTML} ${NGINX_HTML}.backup; \
