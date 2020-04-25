@@ -11,7 +11,6 @@ POSTGRES_VERSION=12.2
 POSTGRES_VERSION_MAJOR=`printf $POSTGRES_VERSION | awk -F '.' '{print $1}'`
 POSTGRES_VERSION_MINOR=`printf $POSTGRES_VERSION | awk -F '.' '{print $2}'`
 ALPINE_VERSION=latest-stable
-ENABLE_POSTGIS=NO
 
 export PATH=${INSTALL_PREFIX}/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 
@@ -66,7 +65,6 @@ function func_build_docker_images() {
     sed -i "s|ARG CITUS_VERSION=.*|ARG CITUS_VERSION=${CITUS_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG HLL_VERSION=.*|ARG HLL_VERSION=${HLL_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG POSTGIS_VERSION=.*|ARG POSTGIS_VERSION=${POSTGIS_VERSION}|g" ${WORK_HOME}/Dockerfile
-    sed -i "s|ARG ENABLE_POSTGIS=.*|ARG ENABLE_POSTGIS=${ENABLE_POSTGIS}|g" ${WORK_HOME}/Dockerfile
 
     # 创建 Postgres 镜像
     docker build -t docker.ronzxy.com/postgres:${POSTGRES_VERSION} ${WORK_HOME}
