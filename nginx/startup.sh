@@ -1,12 +1,12 @@
 #!/bin/sh
 #
-# Author:  Ron<ronzxy@mx.aketi.cn>
+#  Author: Ron<ronzxy@mx.aketi.cn>
 # Version: v19.07.30
 #
 # crontab -e
 #
-# # 启动并保持 Nginx 服务持续运行
-# * * * * * /usr/local/nginx/nginx.sh start 2>&1 > /dev/null
+# # Start and keep the Nginx service running
+# * * * * * chmod 755 /usr/nginx/startup.sh; /usr/nginx/startup.sh start 2>&1 > /dev/null
 
 #########################################################################
 #####                                                               #####
@@ -23,7 +23,7 @@ KERNEL_VERSION_MINOR=`printf ${KERNEL_VERSION:-0.0.0} | awk -F '.' '{print $2 ? 
 KERNEL_VERSION_PATCH=`printf ${KERNEL_VERSION:-0.0.0} | awk -F '.' '{print $3 ? $3 : 0}'`
 
 # NGINX_HOME=/usr/nginx
-# NGINX_CONF=${NGINX_HOME}/cert
+# NGINX_CONF=${NGINX_HOME}/conf
 # NGINX_HTML=${NGINX_HOME}/html
 # NGINX_CERT=${NGINX_HOME}/cert
 # NGINX_MODS=${NGINX_HOME}/modules

@@ -176,13 +176,15 @@ RUN set -ex; \
         sed -i "s|^prefix=.*$|prefix=/usr|g" /usr/lib/pkgconfig/modsecurity.pc; \
         sed -i "s|^# load_module.*/ngx_http_modsecurity_module.so;|load_module ${NGINX_MODS}/ngx_http_modsecurity_module.so;|g" ${NGINX_CONF}/nginx.conf; \
         sed -i "s|^SecRuleEngine.*|# &\\n\\nSecRuleEngine On|g" ${NGINX_CONF}/examples/modsec/modsecurity.conf; \
-        echo "#     modsecurity on;" >> ${NGINX_CONF}/examples/modsec/main.conf; \
-        echo "#     modsecurity_rules_file /usr/nginx/conf/conf.d/modsec/main.conf;" >> ${NGINX_CONF}/examples/modsec/main.conf; \
+        echo "#    modsecurity on;" >> ${NGINX_CONF}/examples/modsec/main.conf; \
+        echo "#    modsecurity_rules_file /usr/nginx/conf/conf.d/modsec/main.conf;" >> ${NGINX_CONF}/examples/modsec/main.conf; \
         echo "" >> ${NGINX_CONF}/examples/modsec/main.conf; \
         echo "Include /usr/nginx/conf/conf.d/modsec/modsecurity.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
         echo "Include /usr/nginx/conf/conf.d/modsec/owasp-modsecurity-crs/crs-setup.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
         echo "Include /usr/nginx/conf/conf.d/modsec/owasp-modsecurity-crs/rules/*.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
         mv ${NGINX_CONF}/owasp-modsecurity-crs /usr/nginx/conf/examples/modsec; \
+        cp ${NGINX_CONF}/examples/modsec/owasp-modsecurity-crs/crs-setup.conf.example ${NGINX_CONF}/examples/modsec/owasp-modsecurity-crs/crs-setup.conf; \
+        sed -i "s|SecAuditLog.*|SecAuditLog ${NGINX_LOGS}/modsec_audit.log|g" /usr/nginx/conf/examples/modsec/modsecurity.conf; \
         cp -af /usr/nginx/conf/examples/modsec /usr/nginx/conf/conf.d/modsec; \
     fi; \
     cp -af ${NGINX_CONF} ${NGINX_CONF}.backup; \

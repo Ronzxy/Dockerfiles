@@ -78,3 +78,15 @@ $server_name | 服务器名称。
 $server_port | 请求到达服务器的端口号。
 $server_protocol | 请求使用的协议，通常是HTTP/1.0或HTTP/1.1。
 $uri | 请求中的当前URI(不带请求参数，参数位于args)，不同于浏览器传递的args)，不同于浏览器传递的args)，不同于浏览器传递的request_uri的值，它可以通过内部重
+
+
+### ModSecurity 白名单配置
+
+```conf
+SecRule REMOTE_ADDR "@streq 192.168.1.1" \
+phase:1,t:none,nolog,allow
+SecRule REMOTE_ADDR "@rx ^192\.168\.1\.(1|5|10)$" \
+phase:1,t:none,nolog,allow
+SecRule REMOTE_ADDR "@streq 192.168.1.1" \
+phase:1,t:none,nolog,pass,ctl:ruleEngine=DetectionOnly
+```
