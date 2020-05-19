@@ -78,7 +78,7 @@ function func_build_docker_images() {
     sed -i "s|ARG JAVA_VERSION_MINOR=.*|ARG JAVA_VERSION_MINOR=${JAVA_VERSION_MINOR}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG JAVA_VERSION_BUILD=.*|ARG JAVA_VERSION_BUILD=${JAVA_VERSION_BUILD}|g" ${WORK_HOME}/Dockerfile
     # 创建 postgresql 镜像
-    docker build -t skygangsta/jdk:${JAVA_VERSION} $WORK_HOME
+    docker build -t docker.ronzxy.com/jdk:${JAVA_VERSION} $WORK_HOME
     
     echo "Finished."
 }

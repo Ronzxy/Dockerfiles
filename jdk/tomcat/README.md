@@ -20,8 +20,10 @@ docker run --name tomcat \
     -v tomcat-logs:/usr/tomcat/logs:rw,z \
     -v tomcat-apps:/usr/tomcat/webapps:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
+    -v /etc/timezone:/etc/timezone:ro,z \
+    -v /etc/localtime:/etc/localtime:ro,z \
     -e CATALINA_OUT="catalina.out.%Y-%m-%d-%H" \
     --cpu-shares=512 --memory=1G --memory-swap=0 \
     --restart=on-failure \
-    -it -d skygangsta/tomcat:8.5-8u231
+    -it -d docker.ronzxy.com/tomcat:8.5.55-with-jdk8u231
 ```

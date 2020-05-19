@@ -10,10 +10,10 @@ BASE_NAME=$(basename $BASH_SOURCE)
 JAVA_VERSION=8u231
 JAVA_VERSION_MAJOR=`printf $JAVA_VERSION | awk -F '.' '{print $1}'`
 JAVA_VERSION_MINOR=`printf $JAVA_VERSION | awk -F '.' '{print $2}'`
-TOMCAT_VERSION=8.5.50
+TOMCAT_VERSION=8.5.55
 TOMCAT_VERSION_MAJOR=`printf $TOMCAT_VERSION | awk -F '.' '{print $1}'`
 TOMCAT_VERSION_MINOR=`printf $TOMCAT_VERSION | awk -F '.' '{print $2}'`
-IMAGE_NAME=skygangsta/jdk:${JAVA_VERSION}
+IMAGE_NAME=docker.ronzxy.com/jdk:${JAVA_VERSION}
 
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 
@@ -30,11 +30,11 @@ Commands:
 
 function check_jdk_docker_image() {
     echo "Checking jdk docker image..."
-    docker images | grep skygangsta/jdk | grep ${JAVA_VERSION} > /dev/null 2>&1
+    docker images | grep docker.ronzxy.com/jdk | grep ${JAVA_VERSION} > /dev/null 2>&1
     if [ $? -ne 0 ]; then
         echo "${IMAGE_NAME} docker image not found, create it..."
         # 依赖镜像未创建
-        if [ ! -f ${WORK_HOME}/../jdk/builder ]; then
+        if [ ! -f ${WORK_HOME}/../builder ]; then
             echo "jdk builder not found"
             exit 1
         fi
@@ -45,7 +45,7 @@ function check_jdk_docker_image() {
         echo "Found ${IMAGE_NAME}"
     fi
     # 切换镜像版本
-    sed -i "s|^FROM skygangsta/jdk:.*$|FROM ${IMAGE_NAME}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|^FROM .*$|FROM ${IMAGE_NAME}|g" ${WORK_HOME}/Dockerfile
 }
 
 function func_build_docker_images() {
@@ -53,7 +53,7 @@ function func_build_docker_images() {
     # 修改 Dockerfile 中的版本信息
     sed -i "s|ARG TOMCAT_VERSION=.*|ARG TOMCAT_VERSION=${TOMCAT_VERSION}|g" ${WORK_HOME}/Dockerfile
     # 创建 Tomcat 镜像
-    docker build -t skygangsta/tomcat:${TOMCAT_VERSION_MAJOR}.${TOMCAT_VERSION_MINOR}-${JAVA_VERSION} $WORK_HOME
+    docker build -t docker.ronzxy.com/tomcat:${TOMCAT_VERSION}-with-jdk${JAVA_VERSION} $WORK_HOME
     
     echo "Finished."
 }
