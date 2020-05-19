@@ -38,7 +38,7 @@ RUN set -ex; \
     rm -rf /tmp/* /var/cache/apk/*
 
 ARG WORKDIR=/usr/nginx
-ARG NGINX_VERSION=1.16.1
+ARG NGINX_VERSION=1.18.0
 ARG STICKY_VERSION=1.2.6
 ARG ENABLE_MODSEC=YES
 ARG MODSEC_BRANCH=v3/master
@@ -152,7 +152,7 @@ RUN set -ex; \
         mkdir -p ${NGINX_CONF}/examples/modsec; \
         cp ${WORK_HOME}/modsecurity/modsecurity.conf-recommended ${NGINX_CONF}/examples/modsec/modsecurity.conf; \
         cp ${WORK_HOME}/modsecurity/unicode.mapping ${NGINX_CONF}/examples/modsec; \
-        cp ${WORK_HOME}/nginx-${NGINX_VERSION}/objs/ngx_http_modsecurity_module.so ${NGINX_CONF}/modules; \
+        cp ${WORK_HOME}/nginx-${NGINX_VERSION}/objs/ngx_http_modsecurity_module.so ${NGINX_MODS}; \
         tar xf ${WORK_HOME}/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION}.tar.gz -C ${WORK_HOME}; \
         mv ${WORK_HOME}/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION} ${NGINX_CONF}/owasp-modsecurity-crs; \
         apk del --no-cache --purge build-base git automake autoconf patch libtool pcre-dev zlib-dev openssl-dev libxslt-dev linux-headers libxml2-dev curl-dev geoip-dev; \

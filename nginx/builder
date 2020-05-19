@@ -10,7 +10,7 @@ BASE_NAME=$(basename $BASH_SOURCE)
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-NGINX_VERSION=1.16.1
+NGINX_VERSION=1.18.0
 NGINX_VERSION_MAJOR=`printf $NGINX_VERSION | awk -F '.' '{print $1}'`
 NGINX_VERSION_MINOR=`printf $NGINX_VERSION | awk -F '.' '{print $2}'`
 STICKY_VERSION=1.2.6
