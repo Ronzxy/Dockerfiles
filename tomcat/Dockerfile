@@ -39,7 +39,7 @@ RUN set -ex; \
     rm -rf /tmp/* /var/cache/apk/*
 
 ARG JAVA_VERSION=8
-ARG TOMCAT_VERSION=8.5.53
+ARG TOMCAT_VERSION=8.5.55
 ARG CRONOLOG_VERSION=1.6.2
 
 ENV CATALINA_HOME=${HOME}
@@ -97,4 +97,4 @@ USER ${USER}
 
 EXPOSE 8080
 
-CMD ["./startup.sh", "start"]
+ENTRYPOINT ["./startup.sh", "start"]

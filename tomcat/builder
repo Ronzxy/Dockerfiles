@@ -8,7 +8,7 @@ WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 BASE_NAME=$(basename $BASH_SOURCE)
 
 JAVA_VERSION=8
-TOMCAT_VERSION=8.5.53
+TOMCAT_VERSION=8.5.55
 TOMCAT_VERSION_MAJOR=`printf $TOMCAT_VERSION | awk -F '.' '{print $1}'`
 TOMCAT_VERSION_MINOR=`printf $TOMCAT_VERSION | awk -F '.' '{print $2}'`
 ALPINE_VERSION=latest-stable
@@ -36,7 +36,7 @@ function func_build_docker_images() {
     sed -i "s|ARG TOMCAT_VERSION=.*|ARG TOMCAT_VERSION=${TOMCAT_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG JAVA_VERSION=.*|ARG JAVA_VERSION=${JAVA_VERSION}|g" ${WORK_HOME}/Dockerfile
     # 创建 postgresql 镜像
-    docker build -t docker.ronzxy.com/tomcat:${TOMCAT_VERSION}-with-jre${JAVA_VERSION} $WORK_HOME
+    docker build -t docker.ronzxy.com/tomcat:${TOMCAT_VERSION}-with-openjdk${JAVA_VERSION} $WORK_HOME
     
     echo "Finished."
 }

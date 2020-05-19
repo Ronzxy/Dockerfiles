@@ -25,5 +25,5 @@ docker run --name tomcat \
     -e CATALINA_OUT="catalina.out.%Y-%m-%d-%H" \
     --cpu-shares=512 --memory=1G --memory-swap=0 \
     --restart=on-failure \
-    -it -d docker.ronzxy.com/tomcat:8.5.53-with-jre8
+    -it -d docker.ronzxy.com/tomcat:8.5.55-with-openjdk8
 ```
