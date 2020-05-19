@@ -15,16 +15,16 @@ chmod 755 builder
 
 ```sh
 
-CONTAINER_ENGINE=docker
-
-${CONTAINER_ENGINE} run --name jenkins \
-    -h jenkins.erayun.cn \
+docker run --name jenkins \
+    -h jenkins.ronzxy.com \
     -p 8080:8080 \
-    -v jenkins-data:/var/lib/jenkins:rw,z \
+    -v jenkins-data:/usr/jenkins/data:rw,z \
     -v /etc/resolv.conf:/etc/resolv.conf:ro,z \
     --cpu-shares=1024 --memory=1G --memory-swap=0 \
     --restart=always \
     --oom-kill-disable \
-    -it -d skygangsta/jenkins:2.190.1
+    -it -d docker.ronzxy.com/jenkins:2.222.3-with-openjdk11
 
 ```
+
+/usr/maven/bin/mvn clean -Dmaven.test.skip=true package -P test

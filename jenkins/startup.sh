@@ -19,7 +19,7 @@ KERNEL_VERSION_MINOR=`printf ${KERNEL_VERSION:-0.0.0} | awk -F '.' '{print $2 ? 
 KERNEL_VERSION_PATCH=`printf ${KERNEL_VERSION:-0.0.0} | awk -F '.' '{print $3 ? $3 : 0}'`
 
 func_start() {
-    java -jar ${WORK_HOME}/jenkins.war --httpPort=${JENKINS_HTTP_PORT}
+    java ${JAVA_OPTS} -jar ${WORK_HOME}/jenkins.war --httpPort=${JENKINS_HTTP_PORT}
 }
 
 func_stop() {

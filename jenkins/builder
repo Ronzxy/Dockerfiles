@@ -7,7 +7,8 @@
 WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 BASE_NAME=$(basename $BASH_SOURCE)
 
-JENKINS_VERSION=2.190.1
+JAVA_VERSION=11
+JENKINS_VERSION=2.222.3
 JENKINS_VERSION_MAJOR=`printf $JENKINS_VERSION | awk -F '.' '{print $1}'`
 JENKINS_VERSION_MINOR=`printf $JENKINS_VERSION | awk -F '.' '{print $2}'`
 ALPINE_VERSION=latest-stable
@@ -30,20 +31,13 @@ function func_build_docker_images() {
     # 修改 Dockerfile 中的版本信息
     if [ -z "${ALPINE_VERSION}" ]; then ALPINE_VERSION=latest-stable; fi
 
-    case ${ALPINE_VERSION} in
-        latest-stable)
-            sed -i "s|FROM alpine:.*|FROM alpine:${ALPINE_VERSION%-*}|g" ${WORK_HOME}/Dockerfile
-        ;;
-        *)
-            sed -i "s|FROM alpine:.*|FROM alpine:${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
-        ;;
-    esac
-
+    sed -i "s/^FROM alpine:.*$/FROM alpine:${ALPINE_VERSION%-*}/g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG JENKINS_VERSION=.*|ARG JENKINS_VERSION=${JENKINS_VERSION}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG JAVA_VERSION=.*|ARG JAVA_VERSION=${JAVA_VERSION}|g" ${WORK_HOME}/Dockerfile
 
     # 创建 Jenkins 镜像
-    docker build -t skygangsta/jenkins:${JENKINS_VERSION} $WORK_HOME
+    docker build -t docker.ronzxy.com/jenkins:${JENKINS_VERSION}-with-openjdk${JAVA_VERSION} $WORK_HOME
     
     echo "Finished."
 }
