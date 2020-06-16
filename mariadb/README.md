@@ -35,10 +35,10 @@ docker run --name mariadb \
 
 ```sh
 
-MYSQL_DATABASE="wsym"
+MYSQL_DATABASE="ronzxydb"
 MYSQL_CHARSET="utf8"
 MYSQL_COLLATION="utf8_general_ci"
-MYSQL_USER="wsym"
+MYSQL_USER="ronzxy"
 MYSQL_PASSWORD="Abc123"
 
 if [ "$MYSQL_PASSWORD" = "" ]; then
@@ -127,4 +127,11 @@ long_query_time = 3
 slow_query_log_file = mariadb-slow.log
 EOF
 
+```
+
+### Operation
+
+```sh
+# mysqldump
+mysqldump -h localhost -u ronzxy -p ronzxydb > ronzxy-backup-$(date +"%Y-%m-%d-%H%M%S").sql
 ```
