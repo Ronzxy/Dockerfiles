@@ -21,13 +21,13 @@ RUN set -ex; \
 RUN set -x; \
     GLIBC_VERSION=2.30-r0; \
     wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub || \
-        echo "Download error return $?"; \
+        if [ -f /etc/apk/keys/sgerrand.rsa.pub ]; then rm -rf /etc/apk/keys/sgerrand.rsa.pub; fi; \
     wget -q https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}.apk || \
-        echo "Download error return $?"; \
+        if [ -f glibc-${GLIBC_VERSION}.apk ]; then rm -rf glibc-${GLIBC_VERSION}.apk; fi; \
     wget -q https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}.apk || \
-        echo "Download error return $?"; \
+        if [ -f glibc-bin-${GLIBC_VERSION}.apk ]; then rm -rf glibc-bin-${GLIBC_VERSION}.apk; fi; \
     wget -q https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-i18n-${GLIBC_VERSION}.apk || \
-        echo "Download error return $?"; \
+        if [ -f glibc-i18n-${GLIBC_VERSION}.apk ]; then rm -rf glibc-i18n-${GLIBC_VERSION}.apk; fi; \
     if [ ! -f /etc/apk/keys/sgerrand.rsa.pub ]; then wget -q http://file.openeasy.cn/alpine/sgerrand.rsa.pub \
         -O /etc/apk/keys/sgerrand.rsa.pub || exit 1; fi; \
     if [ ! -f glibc-${GLIBC_VERSION}.apk ]; then wget -q http://file.openeasy.cn/alpine/glibc/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}.apk || exit 1; fi; \
@@ -61,8 +61,8 @@ RUN set -ex; \
     apk del --no-cache --purge shadow; \
     rm -rf /tmp/* /var/cache/apk/*
 
-ARG POSTGRES_VERSION=12.2
-ARG CITUS_VERSION=9.2.4
+ARG POSTGRES_VERSION=12.3
+ARG CITUS_VERSION=9.3.0
 ARG HLL_VERSION=2.14
 ARG POSTGIS_VERSION=3.0.1
 
@@ -104,7 +104,7 @@ RUN set -ex; \
     #
     apk add --no-cache coreutils zlib libssl1.1 libxml2 readline libxslt libcurl libselinux icu-libs json-c flex bison geos proj gdal perl \
         build-base zlib-dev libxml2-dev openssl-dev readline-dev libxslt-dev curl-dev \
-        libselinux-dev icu-dev flex bison geos-dev proj-dev gdal-dev linux-headers json-c-dev perl-dev; \
+        libselinux-dev icu-dev flex geos-dev proj-dev gdal-dev linux-headers json-c-dev perl-dev; \
     tar xf ${WORK_HOME}/postgresql-${POSTGRES_VERSION}.tar.bz2 -C ${WORK_HOME}; \
     cd ${WORK_HOME}/postgresql-${POSTGRES_VERSION}; \
     ./configure --prefix=${HOME} \
@@ -165,7 +165,7 @@ RUN set -ex; \
 
     # 清理编译依赖
     apk del build-base zlib-dev libxml2-dev openssl-dev readline-dev libxslt-dev curl-dev \
-        libselinux-dev icu-dev flex bison geos-dev proj-dev gdal-dev linux-headers json-c-dev; \
+        libselinux-dev icu-dev flex geos-dev proj-dev gdal-dev linux-headers json-c-dev; \
     # 再次确认依赖
     apk add zlib libssl1.1 libxml2 readline libxslt libcurl libselinux icu-libs json-c flex bison geos proj gdal perl; \
     # 清理数据
