@@ -1,4 +1,4 @@
-# PostgreSQL
+# Jenkins
 
 Build and create jenkins docker image from the alpine edge.
 

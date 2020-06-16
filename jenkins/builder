@@ -1,8 +1,7 @@
 #!/bin/bash
 #
-# 作者：Skygangsta<skygangsta@hotmail.com>
-#
-# Postgres 编译脚本，仅支持 Alpine Linux 系统
+#  Author: Ron<ronzxy@mx.aketi.cn>
+# Version: v20.06.16
 
 WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 BASE_NAME=$(basename $BASH_SOURCE)

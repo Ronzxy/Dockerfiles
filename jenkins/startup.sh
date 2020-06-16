@@ -1,9 +1,7 @@
 #!/bin/sh
 #
-#  Author: Zhang Chaoren<zhangchaoren@mx.aketi.cn>
+#  Author: Ron<ronzxy@mx.aketi.cn>
 # Version: v19.08.23.1
-#
-# PostgreSQL initial and start up, support docker
 
 WORK_HOME=$(cd $(dirname ${0}) && pwd)
 BASE_NAME=$(basename ${0})
