@@ -68,23 +68,23 @@ RUN set -ex && \
     apk upgrade
 
 # 配置系统语言环境
-RUN set -x && \
-    GLIBC_VERSION=2.30-r0 && \
+RUN set -x; \
+    GLIBC_VERSION=2.30-r0; \
     wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub || \
-        echo "Download error return $?" && \
+        if [ -f /etc/apk/keys/sgerrand.rsa.pub ]; then rm -rf /etc/apk/keys/sgerrand.rsa.pub; fi; \
     wget -q https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}.apk || \
-        echo "Download error return $?" && \
+        if [ -f glibc-${GLIBC_VERSION}.apk ]; then rm -rf glibc-${GLIBC_VERSION}.apk; fi; \
     wget -q https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}.apk || \
-        echo "Download error return $?" && \
+        if [ -f glibc-bin-${GLIBC_VERSION}.apk ]; then rm -rf glibc-bin-${GLIBC_VERSION}.apk; fi; \
     wget -q https://github.com/sgerrand/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/glibc-i18n-${GLIBC_VERSION}.apk || \
-        echo "Download error return $?" && \
+        if [ -f glibc-i18n-${GLIBC_VERSION}.apk ]; then rm -rf glibc-i18n-${GLIBC_VERSION}.apk; fi; \
     if [ ! -f /etc/apk/keys/sgerrand.rsa.pub ]; then wget -q http://file.openeasy.cn/alpine/sgerrand.rsa.pub \
-        -O /etc/apk/keys/sgerrand.rsa.pub || exit 1; fi && \
-    if [ ! -f glibc-${GLIBC_VERSION}.apk ]; then wget -q http://file.openeasy.cn/alpine/glibc/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}.apk || exit 1; fi && \
-    if [ ! -f glibc-bin-${GLIBC_VERSION}.apk ]; then wget -q http://file.openeasy.cn/alpine/glibc/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}.apk || exit 1; fi && \
-    if [ ! -f glibc-i18n-${GLIBC_VERSION}.apk ]; then wget -q http://file.openeasy.cn/alpine/glibc/${GLIBC_VERSION}/glibc-i18n-${GLIBC_VERSION}.apk || exit 1; fi && \
-    apk add glibc-bin-${GLIBC_VERSION}.apk glibc-i18n-${GLIBC_VERSION}.apk glibc-${GLIBC_VERSION}.apk && \
-    rm -rf glibc-bin-${GLIBC_VERSION}.apk glibc-i18n-${GLIBC_VERSION}.apk glibc-${GLIBC_VERSION}.apk && \
+        -O /etc/apk/keys/sgerrand.rsa.pub || exit 1; fi; \
+    if [ ! -f glibc-${GLIBC_VERSION}.apk ]; then wget -q http://file.openeasy.cn/alpine/glibc/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}.apk || exit 1; fi; \
+    if [ ! -f glibc-bin-${GLIBC_VERSION}.apk ]; then wget -q http://file.openeasy.cn/alpine/glibc/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}.apk || exit 1; fi; \
+    if [ ! -f glibc-i18n-${GLIBC_VERSION}.apk ]; then wget -q http://file.openeasy.cn/alpine/glibc/${GLIBC_VERSION}/glibc-i18n-${GLIBC_VERSION}.apk || exit 1; fi; \
+    apk add --no-cache glibc-bin-${GLIBC_VERSION}.apk glibc-i18n-${GLIBC_VERSION}.apk glibc-${GLIBC_VERSION}.apk; \
+    rm -rf glibc-bin-${GLIBC_VERSION}.apk glibc-i18n-${GLIBC_VERSION}.apk glibc-${GLIBC_VERSION}.apk; \
     rm -rf /var/cache/apk/*
 RUN printf "zh_CN\nzh_HK\nzh_TW" | xargs -i /usr/glibc-compat/bin/localedef -c -f UTF-8 -i {} {}.UTF-8
 ENV LC_ALL=zh_CN.UTF-8
