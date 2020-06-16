@@ -31,7 +31,7 @@ docker run --name ${CONTAINER_NAME} \
 -v /etc/timezone:/etc/timezone:ro,z \
 -v /etc/localtime:/etc/localtime:ro,z \
 --cpu-shares=512 --memory=256m --memory-swap=0 \
---restart=always \
+--restart=on-failure \
 --oom-kill-disable \
 -it -d ${IMAGE_NAME}
 
@@ -61,7 +61,7 @@ run --name ${CONTAINER_NAME} \
 -v /etc/timezone:/etc/timezone:ro,z \
 -v /etc/localtime:/etc/localtime:ro,z \
 --cpu-shares=512 --memory=256m --memory-swap=0 \
---restart=always \
+--restart=on-failure \
 --oom-kill-disable \
 -it -d ${IMAGE_NAME}
 
@@ -70,6 +70,7 @@ run --name ${CONTAINER_NAME} \
 ### Systemd
 
 ```sh
+# setsebool -P container_manage_cgroup on
 cat > /usr/lib/systemd/system/nginx.service << EOF
 [Unit]
 Description = Nginx service with in a Podman container

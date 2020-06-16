@@ -149,12 +149,16 @@ RUN set -ex; \
     cp win-utf win-utf.default; \
     # 清理编译工具及编译依赖并再次确认依赖包
     if [ ${ENABLE_MODSEC:-NO} = YES ]; then \
+        sed -i "s|^prefix=.*$|prefix=/usr|g" /usr/lib/pkgconfig/modsecurity.pc; \
+        sed -i "s|^# load_module.*/ngx_http_modsecurity_module.so;|load_module ${NGINX_MODS}/ngx_http_modsecurity_module.so;|g" ${NGINX_CONF}/nginx.conf; \
         mkdir -p ${NGINX_CONF}/examples/modsec; \
         cp ${WORK_HOME}/modsecurity/modsecurity.conf-recommended ${NGINX_CONF}/examples/modsec/modsecurity.conf; \
+        sed -i "s|^SecRuleEngine.*|# &\\n\\nSecRuleEngine On|g" ${NGINX_CONF}/examples/modsec/modsecurity.conf; \
         cp ${WORK_HOME}/modsecurity/unicode.mapping ${NGINX_CONF}/examples/modsec; \
         cp ${WORK_HOME}/nginx-${NGINX_VERSION}/objs/ngx_http_modsecurity_module.so ${NGINX_MODS}; \
         tar xf ${WORK_HOME}/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION}.tar.gz -C ${WORK_HOME}; \
-        mv ${WORK_HOME}/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION} ${NGINX_CONF}/owasp-modsecurity-crs; \
+        mv ${WORK_HOME}/owasp-modsecurity-crs-${OWASP_MODSEC_CRS_VERSION} ${NGINX_CONF}/examples/modsec/owasp-modsecurity-crs; \
+        cp ${NGINX_CONF}/examples/modsec/owasp-modsecurity-crs/crs-setup.conf.example ${NGINX_CONF}/examples/modsec/owasp-modsecurity-crs/crs-setup.conf; \
         apk del --no-cache --purge build-base git automake autoconf patch libtool pcre-dev zlib-dev openssl-dev libxslt-dev linux-headers libxml2-dev curl-dev geoip-dev; \
         apk add --no-cache zlib pcre libssl1.1 libxslt libcurl libxml2 libstdc++ geoip; \
     else \
@@ -166,26 +170,22 @@ RUN set -ex; \
 
 # ###
 # # 复制数据
-COPY startup.sh conf ./
+COPY startup.sh modsec.sh conf html ./
 
 RUN set -ex; \
-    chmod 755 startup.sh; \
+    chmod 755 startup.sh modsec.sh; \
     ln -s ${WORKDIR}/startup.sh /usr/bin/startup.sh; \
-    cp -af ./conf.d ./examples ./nginx.conf ${NGINX_CONF}; rm -rf ./conf.d ./examples ./nginx.conf; \
+    mv *.html html; \
+    cp -af ./conf.d ./examples ./nginx.conf ${NGINX_CONF}; \
+    rm -rf ./conf.d ./examples ./nginx.conf; \
     if [ "${ENABLE_MODSEC:-NO}" = "YES" ]; then \
-        sed -i "s|^prefix=.*$|prefix=/usr|g" /usr/lib/pkgconfig/modsecurity.pc; \
-        sed -i "s|^# load_module.*/ngx_http_modsecurity_module.so;|load_module ${NGINX_MODS}/ngx_http_modsecurity_module.so;|g" ${NGINX_CONF}/nginx.conf; \
-        sed -i "s|^SecRuleEngine.*|# &\\n\\nSecRuleEngine On|g" ${NGINX_CONF}/examples/modsec/modsecurity.conf; \
-        echo "#    modsecurity on;" >> ${NGINX_CONF}/examples/modsec/main.conf; \
-        echo "#    modsecurity_rules_file /usr/nginx/conf/conf.d/modsec/main.conf;" >> ${NGINX_CONF}/examples/modsec/main.conf; \
-        echo "" >> ${NGINX_CONF}/examples/modsec/main.conf; \
-        echo "Include /usr/nginx/conf/conf.d/modsec/modsecurity.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
-        echo "Include /usr/nginx/conf/conf.d/modsec/owasp-modsecurity-crs/crs-setup.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
-        echo "Include /usr/nginx/conf/conf.d/modsec/owasp-modsecurity-crs/rules/*.conf" >> ${NGINX_CONF}/examples/modsec/main.conf; \
-        mv ${NGINX_CONF}/owasp-modsecurity-crs /usr/nginx/conf/examples/modsec; \
-        cp ${NGINX_CONF}/examples/modsec/owasp-modsecurity-crs/crs-setup.conf.example ${NGINX_CONF}/examples/modsec/owasp-modsecurity-crs/crs-setup.conf; \
-        sed -i "s|SecAuditLog.*|SecAuditLog ${NGINX_LOGS}/modsec_audit.log|g" /usr/nginx/conf/examples/modsec/modsecurity.conf; \
-        cp -af /usr/nginx/conf/examples/modsec /usr/nginx/conf/conf.d/modsec; \
+        sed -i "s|NGINX_CONF=.*|NGINX_CONF=${NGINX_CONF}|g" modsec.sh; \
+        sed -i "s|NGINX_LOGS=.*|NGINX_LOGS=${NGINX_LOGS}|g" modsec.sh; \
+        mkdir -p ${NGINX_CONF}/conf.d/modsec; \
+        mv modsec.sh ${NGINX_CONF}/conf.d/modsec; \
+        exec ${NGINX_CONF}/conf.d/modsec/modsec.sh create; \
+    else \
+        rm -rf modsec.sh; \
     fi; \
     cp -af ${NGINX_CONF} ${NGINX_CONF}.backup; \
     cp -af ${NGINX_HTML} ${NGINX_HTML}.backup; \

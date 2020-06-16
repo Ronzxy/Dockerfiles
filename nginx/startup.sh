@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 #  Author: Ron<ronzxy@mx.aketi.cn>
-# Version: v19.07.30
+# Version: v20.06.16
 #
 # crontab -e
 #
@@ -38,7 +38,7 @@ export LD_LIBRARY_PATH=${NGINX_HOME}/lib:$LD_LIBRARY_PATH
 #####                                                               #####
 #########################################################################
 
-function func_help() {
+func_help() {
         echo "
 Usage:
     ${BASE_NAME} [Command]
@@ -84,7 +84,7 @@ func_nginx_env() {
     chmod 755 ${NGINX_HOME}/sbin/nginx
 }
 
-function func_nginx_pids() {
+func_nginx_pids() {
     if [ -f ${NGINX_HOME}/.dockerenv ]; then
         echo $(ps -ef | grep "nginx: master process" | grep -v grep | awk -F ' ' '{print $1}')
     else
@@ -92,7 +92,7 @@ function func_nginx_pids() {
     fi
 }
 
-function func_nginx_start() {
+func_nginx_start() {
     func_nginx_env
 
     PID=$(func_nginx_pids)
@@ -104,7 +104,7 @@ function func_nginx_start() {
     fi
 }
 
-function func_nginx_daemon() {
+func_nginx_daemon() {
     func_nginx_env
 
     PID=$(func_nginx_pids)
@@ -116,23 +116,23 @@ function func_nginx_daemon() {
     fi
 }
 
-function func_nginx_reload() {
+func_nginx_reload() {
     ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_CONF}/nginx.conf -s reload
 }
 
-function func_nginx_reopen() {
+func_nginx_reopen() {
     ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_CONF}/nginx.conf -s reopen
 }
 
-function func_nginx_stop() {
+func_nginx_stop() {
     ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_CONF}/nginx.conf -s stop
 }
 
-function func_nginx_quit() {
+func_nginx_quit() {
     ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_CONF}/nginx.conf -s quit
 }
 
-function func_nginx_test() {
+func_nginx_test() {
     ${NGINX_HOME}/sbin/nginx -p ${NGINX_HOME} -c ${NGINX_CONF}/nginx.conf -t
 }
 
