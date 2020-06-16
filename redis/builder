@@ -10,11 +10,9 @@ BASE_NAME=$(basename $BASH_SOURCE)
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-REDIS_VERSION=6.0.0
+REDIS_VERSION=6.0.3
 REDIS_VERSION_MAJOR=`printf $REDIS_VERSION | awk -F '.' '{print $1}'`
 REDIS_VERSION_MINOR=`printf $REDIS_VERSION | awk -F '.' '{print $2}'`
-BUILD_PREFIX=/usr
-INSTALL_PREFIX=${WORK_HOME}/dist/redis-${REDIS_VERSION}
 ALPINE_VERSION=latest-stable
 
 function func_help() {

@@ -38,7 +38,7 @@ RUN set -ex; \
     apk del --no-cache --purge shadow tzdata; \
     rm -rf /tmp/* /var/cache/apk/*
 
-ARG REDIS_VERSION=6.0.0
+ARG REDIS_VERSION=6.0.3
 
 RUN set -ex; \
     WORK_HOME="$(mktemp -d)" && cd ${WORK_HOME}; \
@@ -56,7 +56,7 @@ RUN set -ex; \
     rm -rf /tmp/* /var/cache/apk/*
 
 ENV REDIS_PORT=6379
-ENV REDIS_DATA=/var/lib/redis
+ENV REDIS_DATA=/usr/redis/data
 ENV APPEND_ONLY=yes
 ENV CLUSTER_ENABLE=no
 
