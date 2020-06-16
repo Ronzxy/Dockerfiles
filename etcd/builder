@@ -1,0 +1,57 @@
+#!/bin/bash
+#
+# 作者：Skygangsta<skygangsta@hotmail.com>
+#
+# Nginx 编译脚本，仅支持 Debian 系 Linux 系统
+
+WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+BASE_NAME=$(basename $BASH_SOURCE)
+
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+export PATH
+
+ETCD_VERSION=3.4.9
+ETCD_VERSION_MAJOR=`printf $ETCD_VERSION | awk -F '.' '{print $1}'`
+ETCD_VERSION_MINOR=`printf $ETCD_VERSION | awk -F '.' '{print $2}'`
+ALPINE_VERSION=latest-stable
+
+function func_help() {
+    echo "
+Usage:
+    ${BASE_NAME} [Command]
+
+Commands:
+    image       - Build a docker image
+    help        - Show this information
+"
+}
+
+function func_build_docker_images() {
+    echo "Start building docker image..."
+    # 修改 Dockerfile 中的版本信息
+    if [ -z "${ALPINE_VERSION}" ]; then ALPINE_VERSION=latest-stable; fi
+
+    sed -i "s|FROM alpine:.*|FROM alpine:${ALPINE_VERSION%-*}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
+    sed -i "s|ARG ETCD_VERSION=.*|ARG ETCD_VERSION=${ETCD_VERSION}|g" ${WORK_HOME}/Dockerfile
+    # 创建 Redis 镜像
+    docker build -t docker.ronzxy.com/etcd:${ETCD_VERSION} ${WORK_HOME}
+    
+    echo "Finished."
+}
+
+case "$1" in
+    image)
+        # 创建 redis docker 构建容器
+        func_build_docker_images
+
+        exit 0
+    ;;
+    help)
+        func_help
+    ;;
+    *)
+        func_help
+        exit 1
+    ;;
+esac
