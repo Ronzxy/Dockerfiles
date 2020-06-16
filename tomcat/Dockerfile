@@ -1,6 +1,8 @@
-FROM alpine:latest
+FROM adoptopenjdk/openjdk8-openj9:alpine-slim
 
 ARG ALPINE_VERSION=latest-stable
+ARG USE_ADOPT_JDK=true
+ARG USE_ORACLE_JDK=
 
 RUN set -ex; \
     echo "" > /etc/apk/repositories; \
@@ -39,7 +41,7 @@ RUN set -ex; \
     rm -rf /tmp/* /var/cache/apk/*
 
 ARG JAVA_VERSION=8
-ARG TOMCAT_VERSION=8.5.55
+ARG TOMCAT_VERSION=8.5.56
 ARG CRONOLOG_VERSION=1.6.2
 
 ENV CATALINA_HOME=${HOME}
@@ -59,7 +61,17 @@ RUN set -ex; \
         -O ${BuildDir}/cronolog-${CRONOLOG_VERSION}.tar.xz; \
     wget "https://www.apache.org/dyn/closer.cgi?action=download&filename=tomcat/tomcat-${TOMCAT_VERSION_MAJOR}/v${TOMCAT_VERSION}/bin/apache-tomcat-${TOMCAT_VERSION}.tar.gz" \
         -O apache-tomcat-${TOMCAT_VERSION}.tar.gz; \
-    apk add --no-cache libssl1.1 apr openjdk${JAVA_VERSION} coreutils openssl-dev apr-dev build-base; \
+    if [ ! -z "${USE_ADOPT_JDK}" ] || [ ! -z "${USE_ORACLE_JDK}" ]; then \
+        apk add --no-cache libssl1.1 apr coreutils openssl-dev apr-dev build-base; \
+        if [ ! -d "/usr/lib/jvm" ]; then mkdir -p /usr/lib/jvm; fi; \
+        if [ ! -z "${USE_ADOPT_JDK}" ]; then \
+            ln -sf /opt/java/openjdk /usr/lib/jvm/default-jvm; \
+        else \
+            ln -sf /usr/java/default /usr/lib/jvm/default-jvm; \
+        fi; \
+    else \
+        apk add --no-cache libssl1.1 apr openjdk${JAVA_VERSION} coreutils openssl-dev apr-dev build-base; \
+    fi; \
     tar xf ${BuildDir}/cronolog-${CRONOLOG_VERSION}.tar.xz -C "${BuildDir}" --strip-components=1; \
     cd "${BuildDir}"; \
     ./configure --prefix=/usr; \
@@ -83,12 +95,13 @@ RUN set -ex; \
         ${CATALINA_HOME}/bin/tomcat-native.tar.gz ${CATALINA_HOME}/webapps/*; \
     rm -rf /tmp/* /var/cache/apk/*
 
-COPY startup.sh index.html ./
+COPY startup.sh index.html /usr/bin/
 
 RUN set -ex;\
-    chmod 755 startup.sh; \
+    chmod 755 /usr/bin/startup.sh; \
+    ln -sf /usr/bin/startup.sh startup.sh; \
     mkdir ${CATALINA_HOME}/webapps/ROOT; \
-    mv index.html ${CATALINA_HOME}/webapps/ROOT; \
+    mv /usr/bin/index.html ${CATALINA_HOME}/webapps/ROOT; \
     chown -R ${USER}:${GROUP} ${CATALINA_HOME}/webapps startup.sh
 
 VOLUME [ "${CATALINA_HOME}/conf", "${CATALINA_HOME}/logs", "${CATALINA_HOME}/webapps" ]

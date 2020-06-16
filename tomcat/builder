@@ -7,11 +7,16 @@
 WORK_HOME=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 BASE_NAME=$(basename $BASH_SOURCE)
 
+# When Use Adopt OpenJDK or OpenJDK: 8/11
+# When Use Oracle JDK: 8u202/8u231
 JAVA_VERSION=8
-TOMCAT_VERSION=8.5.55
+TOMCAT_VERSION=8.5.56
 TOMCAT_VERSION_MAJOR=`printf $TOMCAT_VERSION | awk -F '.' '{print $1}'`
 TOMCAT_VERSION_MINOR=`printf $TOMCAT_VERSION | awk -F '.' '{print $2}'`
 ALPINE_VERSION=latest-stable
+USE_ADOPT_JDK=true
+USE_ORACLE_JDK=
+USE_ADOPT_OPENJ9=true
 
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 
@@ -26,17 +31,66 @@ Commands:
 "
 }
 
+function check_jdk_docker_image() {
+    echo "Checking jdk docker image..."
+    docker images | grep docker.ronzxy.com/jdk | grep ${JAVA_VERSION} > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "${IMAGE_NAME} docker image not found, create it..."
+        # 依赖镜像未创建
+        if [ ! -f ${WORK_HOME}/../jdk/builder ]; then
+            echo "jdk builder not found"
+            exit 1
+        fi
+        sed -i "s/^JAVA_VERSION=.*$/JAVA_VERSION=${JAVA_VERSION}/g" ${WORK_HOME}/../jdk/builder
+        chmod 755 ${WORK_HOME}/../jdk/builder
+        bash ${WORK_HOME}/../jdk/builder image || exit 1
+    else
+        echo "Found ${IMAGE_NAME}"
+    fi
+}
+
 function func_build_docker_images() {
     echo "Start building docker image..."
     # 修改 Dockerfile 中的版本信息
-    if [ -z "${ALPINE_VERSION}" ]; then ALPINE_VERSION=latest-stable; fi
-
-    sed -i "s/^FROM alpine:.*$/FROM alpine:${ALPINE_VERSION%-*}/g" ${WORK_HOME}/Dockerfile
-    sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG TOMCAT_VERSION=.*|ARG TOMCAT_VERSION=${TOMCAT_VERSION}|g" ${WORK_HOME}/Dockerfile
     sed -i "s|ARG JAVA_VERSION=.*|ARG JAVA_VERSION=${JAVA_VERSION}|g" ${WORK_HOME}/Dockerfile
-    # 创建 postgresql 镜像
-    docker build -t docker.ronzxy.com/tomcat:${TOMCAT_VERSION}-with-openjdk${JAVA_VERSION} $WORK_HOME
+
+    if [ ! -z "${USE_ADOPT_JDK}" ] || [ ! -z "${USE_ORACLE_JDK}" ]; then
+        if [ ! -z "${USE_ADOPT_JDK}" ] && [ ! -z "${USE_ORACLE_JDK}" ]; then
+            echo "Adopt OpenJDK and Oracle JDK are opened at the same time, Adopt OpenJDK will be used first."
+        fi
+
+        if [ ! -z "${USE_ADOPT_JDK}" ]; then # Use Adopt OpenJDK
+            sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=latest-stable|g" ${WORK_HOME}/Dockerfile
+            sed -i "s|ARG USE_ADOPT_JDK=.*|ARG USE_ADOPT_JDK=true|g" ${WORK_HOME}/Dockerfile
+            sed -i "s|ARG USE_ORACLE_JDK=.*|ARG USE_ORACLE_JDK=|g" ${WORK_HOME}/Dockerfile
+
+            if [ "${USE_ADOPT_OPENJ9}" = true ]; then
+                sed -i "s|^FROM .*$|FROM adoptopenjdk/openjdk${JAVA_VERSION}-openj9:alpine-slim|g" ${WORK_HOME}/Dockerfile
+                docker build -t docker.ronzxy.com/tomcat:${TOMCAT_VERSION}-with-adoptjdk${JAVA_VERSION}-openj9 ${WORK_HOME}
+            else
+                sed -i "s|^FROM .*$/FROM adoptopenjdk|openjdk${JAVA_VERSION}:alpine-slim|g" ${WORK_HOME}/Dockerfile
+                docker build -t docker.ronzxy.com/tomcat:${TOMCAT_VERSION}-with-adoptjdk${JAVA_VERSION} ${WORK_HOME}
+            fi
+        else # Use Oracle JDK
+            check_jdk_docker_image
+
+            sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=latest-stable|g" ${WORK_HOME}/Dockerfile
+            sed -i "s|ARG USE_ADOPT_JDK=.*|ARG USE_ADOPT_JDK=|g" ${WORK_HOME}/Dockerfile
+            sed -i "s|ARG USE_ORACLE_JDK=.*|ARG USE_ORACLE_JDK=true|g" ${WORK_HOME}/Dockerfile
+
+            sed -i "s|^FROM .*$|FROM docker.ronzxy.com/jdk:${JAVA_VERSION}|g" ${WORK_HOME}/Dockerfile
+            docker build -t docker.ronzxy.com/tomcat:${TOMCAT_VERSION}-with-jdk${JAVA_VERSION} ${WORK_HOME}
+        fi
+    else # Use openjdk
+        if [ -z "${ALPINE_VERSION}" ]; then ALPINE_VERSION=latest-stable; fi
+
+        sed -i "s/^FROM .*$/FROM alpine:${ALPINE_VERSION%-*}/g" ${WORK_HOME}/Dockerfile
+        sed -i "s|ARG ALPINE_VERSION=.*|ARG ALPINE_VERSION=${ALPINE_VERSION}|g" ${WORK_HOME}/Dockerfile
+
+        docker build -t docker.ronzxy.com/tomcat:${TOMCAT_VERSION}-with-openjdk${JAVA_VERSION} ${WORK_HOME} 
+    fi
+        
     
     echo "Finished."
 }
